@@ -176,7 +176,7 @@ class FunctionQuestion(TestQuestion):
             rval = attr(*args, **kwargs)
             assert isinstance(
                 rval, self.annotations["return"]
-            ), f"""The function {self.name} didn't return a {self.annotations["return"]}"""
+            ), f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
             return rval
 
         return _wrapper
@@ -212,9 +212,16 @@ class CellQuestion(FunctionQuestion):
     def validate_instance(self, solution):
         # Create a wrapper function in the user's namespace.
         def _cell_wrapper(*args, **kwargs):
-            args = {name: args[n] for n, name in enumerate(self.annotations) if name != "return"}
-            args.update(kwargs)
-            result = solution.run(args)
+            updates = {}
+            for i, arg in enumerate(self.annotations):
+                if arg != "return":
+                    if arg.strip().startswith("{"):
+                        updates[getattr(self, arg[1:-1].strip())] = args[i]
+                    else:
+                        updates[arg] = args[i]
+
+            updates.update(kwargs)
+            result = solution.run(updates)
             return result.result
 
         solution.ns["_cell_wrapper"] = _cell_wrapper
