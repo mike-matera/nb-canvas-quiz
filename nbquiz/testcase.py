@@ -210,6 +210,14 @@ class CellQuestion(FunctionQuestion):
         return super().validate_class()
 
     def validate_instance(self, solution):
+        # Validate that the cell defines the required variables.
+        args = self.annotations.copy()
+        del args["return"]
+        for arg in args:
+            if arg.strip().startswith("{"):
+                arg = getattr(self, arg[1:-1].strip())
+            assert arg in solution.assignments, f"""The variable "{arg}" was never assigned."""
+
         # Create a wrapper function in the user's namespace.
         def _cell_wrapper(*args, **kwargs):
             updates = {}
