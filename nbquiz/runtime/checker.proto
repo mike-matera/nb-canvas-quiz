@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package checker;
+
+service Checker {
+  // Tests student code while keeping source opaque.
+  rpc run_tests(TestRequest) returns (TestReply) {}
+}
+
+// The request message containing the user's name.
+message TestRequest {
+  string id = 1;
+  string source = 2;
+}
+
+// The response message containing the greetings
+message TestReply {
+  string response = 1;
+  optional string error = 2;
+}

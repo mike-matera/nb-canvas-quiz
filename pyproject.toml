@@ -9,6 +9,11 @@ dependencies = [
     "jinja2", 
     "jupyterlab",
     "ipywidgets",
+    "grpcio",
+    "myst_parser",
+    "docutils",
+    "cssutils",
+    "minify_html",
 ]
 
 [tool.setuptools]

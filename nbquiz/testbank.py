@@ -3,9 +3,9 @@ Interface for a group of test banks.
 """
 
 import nbformat
-from nbtest.analysis import AnalysisNode
 
 from nbquiz import TestQuestion
+from nbtest.analysis import AnalysisNode
 
 
 class TestBank:
@@ -57,6 +57,6 @@ class TestBank:
                 else:
                     self._forbidden[f].append(q)
 
-        print(self._tags)
-        print(self._required)
-        print(self._forbidden)
+    @property
+    def questions(self):
+        return self._questions
