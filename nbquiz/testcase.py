@@ -2,8 +2,14 @@
 Support for Notebook test banks.
 """
 
+## TODO: Tighten up validation. Is it possible to get out of band failures on internal errors?
+## TODO: Consider correctness and overrides for validation errors.
+## TODO: Pretty print class names
+## TODO: Document the question format.
+
 import ast
 import hashlib
+import re
 import textwrap
 from collections.abc import Iterable
 from typing import Callable
@@ -29,8 +35,8 @@ class TestQuestion(TestCase):
     celltag = None
 
     # The name of an attribute in the notebook namespace to test.
-    # This name will be valid in the test as if it had been imported.
-    # None skips any import.
+    # The attribute named will be put in `self.solution`
+    # If None, `self.solution` will contain a CellCacheEntry
     name = None
 
     def setUp(self) -> None:
@@ -96,9 +102,7 @@ class TestQuestion(TestCase):
 
         Add the tag `{}` to the docstring in your solution cell.
         """).format(
-            textwrap.dedent(cls.__doc__).format(
-                **{item: getattr(cls, item) for item in dir(cls) if not item.startswith("__")}
-            ),
+            textwrap.dedent(cls.__doc__).format(**{item: getattr(cls, item) for item in dir(cls)}),
             cls._celltag,
         )
 
@@ -110,7 +114,7 @@ class TestQuestion(TestCase):
             m.update(f"""{name}:{value}""".encode("utf-8"))
 
         if "classname" not in params:
-            classname = f"""{cls.__name__}{m.hexdigest()[0:4]}"""
+            classname = f"""{cls.__name__}_{m.hexdigest()[0:4]}"""
         else:
             classname = params["classname"]
 
@@ -130,21 +134,30 @@ class FunctionQuestion(TestQuestion):
 
         1. The name has been defined as a function.
         2. The arguments have the right names and are in the right order.
-        3. Returns a wrapper so that calls can be checked for return values.
+        3. Returns a wrapper so that calls can be checked for return type.
 
     """
 
+    # Required: A dictionary of type annotations similar to the ones
+    # returned by `inspect.get_annotations()`
     annotations = None
+
+    @classmethod
+    def _resolve_annotations(cls):
+        formatted = {}
+        for an, typ in cls.annotations.items():
+            if (m := re.match(r"^\s*{\s*(\S+)\s*}\s*$", an)) is not None:
+                assert hasattr(
+                    cls, m.group(1)
+                ), f"""The annotation dictionary references {m.group(1)} but the class does not have a matching attribute."""
+                formatted[getattr(cls, m.group(1))] = typ
+            else:
+                formatted[an] = typ
+        return formatted
 
     @classmethod
     def validate_class(cls):
         assert cls.name is not None, """The `name` attribute is required in a FunctionQuestion."""
-        for attr in cls.annotations:
-            if attr != "return" and attr.strip().startswith("{"):
-                assert hasattr(
-                    cls, attr[1:-1].strip()
-                ), f"""Annotations expect the parameter {attr} but it's not defined in {cls}"""
-
         return super().validate_class()
 
     def validate_instance(self, solution: TagCacheEntry):
@@ -160,14 +173,12 @@ class FunctionQuestion(TestQuestion):
             assert (
                 solution.functions[self.name].docstring is not None
             ), f"""The function {self.name} has no docstring."""
-            args = self.annotations.copy()
-            del args["return"]
-            assert len(args) == len(
+
+            argnames = [arg for arg in self._resolve_annotations() if arg != "return"]
+            assert len(argnames) == len(
                 solution.functions[self.name].arguments
             ), f"""The function {self.name} has the wrong number of arguments."""
-            for i, arg in enumerate(args):
-                if arg.strip().startswith("{"):
-                    arg = getattr(self, arg[1:-1].strip())
+            for i, arg in enumerate(argnames):
                 assert (
                     arg == solution.functions[self.name].arguments[i]
                 ), f"""The argument "{solution.functions[self.name].arguments[i]}" is misspelled or in the wrong place."""
@@ -211,23 +222,14 @@ class CellQuestion(FunctionQuestion):
 
     def validate_instance(self, solution):
         # Validate that the cell defines the required variables.
-        args = self.annotations.copy()
-        del args["return"]
-        for arg in args:
-            if arg.strip().startswith("{"):
-                arg = getattr(self, arg[1:-1].strip())
-            assert arg in solution.assignments, f"""The variable "{arg}" was never assigned."""
+
+        argnames = [arg for arg in self._resolve_annotations() if arg != "return"]
+        for name in argnames:
+            assert name in solution.assignments, f"""The variable "{name}" was never assigned."""
 
         # Create a wrapper function in the user's namespace.
         def _cell_wrapper(*args, **kwargs):
-            updates = {}
-            for i, arg in enumerate(self.annotations):
-                if arg != "return":
-                    if arg.strip().startswith("{"):
-                        updates[getattr(self, arg[1:-1].strip())] = args[i]
-                    else:
-                        updates[arg] = args[i]
-
+            updates = {name: args[i] for i, name in enumerate(argnames)}
             updates.update(kwargs)
             result = solution.run(updates)
             return result.result
