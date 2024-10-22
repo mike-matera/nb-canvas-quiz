@@ -16,5 +16,5 @@ message TestRequest {
 // The response message containing the greetings
 message TestReply {
   string response = 1;
-  optional string error = 2;
+  optional int32 status = 2;
 }

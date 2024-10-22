@@ -16,9 +16,6 @@ dependencies = [
     "minify_html",
 ]
 
-[tool.setuptools]
-py-modules = ['nbquiz']
-
 #[tool.setuptools.package-data]
 #"nbquiz.templates" = ["*.html"]
 

@@ -1,23 +1,12 @@
 """The checker client."""
 
-import logging
-
-import checker_pb2
-import checker_pb2_grpc
 import grpc
 
+from . import checker_pb2, checker_pb2_grpc
 
-def run():
-    print("I'm gonna send your code.")
-    with grpc.insecure_channel("localhost:") as channel:
-        print("I'm connected to the Checker!")
+
+def check(tag, code):
+    with grpc.insecure_channel("localhost:32453") as channel:
         stub = checker_pb2_grpc.CheckerStub(channel)
-
-        response = stub.run_tests(checker_pb2.TestRequest(id="@fuck", source="you"))
-
-    print("Greeter client received: " + response.response)
-
-
-if __name__ == "__main__":
-    logging.basicConfig()
-    run()
+        response = stub.run_tests(checker_pb2.TestRequest(id=tag, source=code))
+    return response.status, response.response

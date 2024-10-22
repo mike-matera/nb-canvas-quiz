@@ -13,9 +13,9 @@ class TestRequest(_message.Message):
     def __init__(self, id: _Optional[str] = ..., source: _Optional[str] = ...) -> None: ...
 
 class TestReply(_message.Message):
-    __slots__ = ("response", "error")
+    __slots__ = ("response", "status")
     RESPONSE_FIELD_NUMBER: _ClassVar[int]
-    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
     response: str
-    error: str
-    def __init__(self, response: _Optional[str] = ..., error: _Optional[str] = ...) -> None: ...
+    status: int
+    def __init__(self, response: _Optional[str] = ..., status: _Optional[int] = ...) -> None: ...

@@ -5,40 +5,31 @@ The checker server.
 import asyncio
 import logging
 
-import checker_pb2
-import checker_pb2_grpc
 import grpc
 
+from . import checker_pb2, checker_pb2_grpc
 
-# Service implementation
+logging.basicConfig(level=logging.INFO)
+
+
 class Checker(checker_pb2_grpc.CheckerServicer):
-    def __init__(self):
-        print("Loading some fucking tests...")
+    def __init__(self, tb):
+        self._tbpath = tb
 
     async def run_tests(
         self,
         request: checker_pb2.TestRequest,
         context: grpc.aio.ServicerContext,
     ) -> checker_pb2.TestReply:
-        # Test run is something like
-        # Create test notebook file.
-        # subprocess.run("jupyter execute --output output.ipynb input.ipynb")
-        # Parse the resulting notebook for errors.
-        return checker_pb2.TestReply(response="You pretty much fucked it.")
+        proc = await asyncio.create_subprocess_shell(
+            f"""python -m nbquiz.cli -t {self._tbpath} test -c {request.id}""",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate(input=request.source.encode("utf-8"))
+        if stderr:
+            logging.warning(stderr)
 
-
-# main()
-async def serve() -> None:
-    server = grpc.aio.server()
-    checker = Checker()
-    checker_pb2_grpc.add_CheckerServicer_to_server(checker, server)
-    listen_addr = "[::]:32453"
-    server.add_insecure_port(listen_addr)
-    logging.info("Starting server on %s", listen_addr)
-    await server.start()
-    await server.wait_for_termination()
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(serve())
+        await proc.wait()
+        return checker_pb2.TestReply(response=stdout, status=proc.returncode)
