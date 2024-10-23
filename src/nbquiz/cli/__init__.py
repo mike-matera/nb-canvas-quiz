@@ -43,7 +43,7 @@ def main():
     # Load the tesbanks for subcommands.
     tb = testbank.TestBank()
     tb.load(*Path(args.testbank).glob("**/*.ipynb"))
-    logging.info(f"Loaded {tb.stats()["questions"]} questions.")
+    logging.info(f"""Loaded {tb.stats()["questions"]} questions.""")
 
     # Call the subcommand.
     return args.func(args, tb)

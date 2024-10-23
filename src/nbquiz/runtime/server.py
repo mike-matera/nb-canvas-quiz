@@ -4,6 +4,7 @@ The checker server.
 
 import asyncio
 import logging
+import time
 
 import grpc
 
@@ -21,6 +22,7 @@ class Checker(checker_pb2_grpc.CheckerServicer):
         request: checker_pb2.TestRequest,
         context: grpc.aio.ServicerContext,
     ) -> checker_pb2.TestReply:
+        start = time.monotonic()
         proc = await asyncio.create_subprocess_shell(
             f"""nbquiz -t {self._tbpath} test""",
             stdout=asyncio.subprocess.PIPE,
@@ -29,7 +31,9 @@ class Checker(checker_pb2_grpc.CheckerServicer):
         )
         stdout, stderr = await proc.communicate(input=request.source.encode("utf-8"))
         if stderr != "":
-            logging.warning(stderr)
+            logging.info(stderr)
 
         await proc.wait()
+        end = time.monotonic()
+        logging.info(f"Request completed in {end-start} seconds.")
         return checker_pb2.TestReply(response=stdout, status=proc.returncode)
