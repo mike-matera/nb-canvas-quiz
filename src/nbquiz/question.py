@@ -2,14 +2,8 @@
 Support for Notebook test banks.
 """
 
-## FIXME: Delete the tagging system adn improve celltags.
-##    Related questions should be grouped explicitly in a testbank notebook.
-##    Tests, therefore are just a list of Questions/Groups.
-
 ## NB: Canvas cannot have question groups inside of groups. This system,
 ##     similarly need only support a single level of hierarchy.
-##
-## TODO: Pretty print class names
 ## TODO: Document the question format.
 
 import ast
@@ -21,7 +15,13 @@ from collections.abc import Iterable
 from typing import Callable
 from unittest import TestCase
 
+from jinja2 import Environment, PackageLoader, select_autoescape
+
 import nbtest
+
+_template_env = Environment(
+    loader=PackageLoader("nbquiz", package_path="resources"), autoescape=select_autoescape()
+)
 
 
 class TestQuestion(TestCase):
@@ -113,19 +113,21 @@ class TestQuestion(TestCase):
         assert not error, f"""The question text references a variable {error} that is not present in the class definition."""
 
     @classmethod
+    def _template_values(cls):
+        values = {item: str(getattr(cls, item)) for item in dir(cls)}
+        values.update(
+            {
+                "celltag": cls.celltag(),
+                "cellid": cls.cellid(),
+            }
+        )
+        values["question"] = textwrap.dedent(cls.__doc__).strip().format(**values)
+        return values
+
+    @classmethod
     def question(cls):
         """Return the Markdown of a test question."""
-        cls.validate()
-        return textwrap.dedent("""
-        {}
-
-        Add the tag `{}` to the docstring in your solution cell.
-        """).format(
-            textwrap.dedent(cls.__doc__).format(
-                **{item: f"""`{getattr(cls, item)}`""" for item in dir(cls)}
-            ),
-            cls.celltag(),
-        )
+        return _template_env.get_template("question_template.md").render(**cls._template_values())
 
     @classmethod
     def variant(cls, classname=None, extra_bases=None, **params):
@@ -264,6 +266,17 @@ class FunctionQuestion(TestQuestion):
         cls._resolve_annotations()
         return super().validate()
 
+    @classmethod
+    def _template_values(cls):
+        values = super()._template_values()
+        values["annotations"] = cls._resolve_annotations()
+        return values
+
+    @classmethod
+    def question(cls):
+        values = cls._template_values()
+        return _template_env.get_template("function_question_template.md").render(**values)
+
 
 class CellQuestion(FunctionQuestion):
     """
@@ -293,3 +306,8 @@ class CellQuestion(FunctionQuestion):
         # Override the symbol name to use the cell-based wrapper.
         cls.name = "_cell_wrapper"
         return super().validate()
+
+    @classmethod
+    def question(cls):
+        values = cls._template_values()
+        return _template_env.get_template("cell_question_template.md").render(**values)

@@ -4,7 +4,7 @@ Interface for a group of test banks.
 
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Iterable, Union
 
 import nbformat
 
@@ -66,8 +66,11 @@ class _TestBank:
         """Return a source code blob of the entire test bank."""
         return self._sources
 
-    def test_for(self, tag):
-        return self._questions.get(tag)
+    def match(self, tags: Iterable[str]) -> TestQuestion:
+        questions = [self._questions[tag] for tag in tags if tag in self._questions]
+        if not questions:
+            raise ValueError("""No question tag found. Did you add the tag from the question?""")
+        return questions
 
     def _load(self, filename: Union[str, Path]):
         nb = nbformat.read(filename, nbformat.NO_CONVERT)
