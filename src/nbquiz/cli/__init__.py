@@ -4,11 +4,9 @@ Command line tools for nbquiz.
 
 import argparse
 import importlib
-import logging
 import pathlib
-from pathlib import Path
 
-from .. import testbank
+from nbquiz.testbank import bank
 
 subcommands = {
     file.stem: importlib.import_module(f".{file.stem}", package=__package__)
@@ -26,7 +24,7 @@ parser.add_argument(
     "-t",
     "--testbank",
     required=True,
-    help="A path that will be recursively searched for testbank files.",
+    help="A comman separated list of paths that will be searched for testbank files.",
 )
 
 subparsers = parser.add_subparsers(help="subcommand help", required=True)
@@ -41,12 +39,11 @@ def main():
     args = parser.parse_args()
 
     # Load the tesbanks for subcommands.
-    tb = testbank.TestBank()
-    tb.load(*Path(args.testbank).glob("**/*.ipynb"))
-    logging.info(f"""Loaded {tb.stats()["questions"]} questions.""")
+    for b in args.testbank.split(","):
+        bank.add_path(b)
 
     # Call the subcommand.
-    return args.func(args, tb)
+    return args.func(args)
 
 
 if __name__ == "__main__":

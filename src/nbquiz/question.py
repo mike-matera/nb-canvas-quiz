@@ -2,8 +2,13 @@
 Support for Notebook test banks.
 """
 
-## TODO: Tighten up validation. Is it possible to get out of band failures on internal errors?
-## TODO: Consider correctness and overrides for validation errors.
+## FIXME: Delete the tagging system adn improve celltags.
+##    Related questions should be grouped explicitly in a testbank notebook.
+##    Tests, therefore are just a list of Questions/Groups.
+
+## NB: Canvas cannot have question groups inside of groups. This system,
+##     similarly need only support a single level of hierarchy.
+##
 ## TODO: Pretty print class names
 ## TODO: Document the question format.
 
@@ -11,6 +16,7 @@ import ast
 import hashlib
 import re
 import textwrap
+from collections import UserList
 from collections.abc import Iterable
 from typing import Callable
 from unittest import TestCase
@@ -27,8 +33,8 @@ class TestQuestion(TestCase):
     tokens_required = []
     tokens_forbidden = []
 
-    # String tags that can be used to select questions for a test.
-    tags = []
+    # Docstring must be present.
+    __doc__: str
 
     def __init__(self, tests=()):
         """
@@ -40,10 +46,16 @@ class TestQuestion(TestCase):
         self.validate()
         self.solution_cell = None
 
-        assert (
-            self.celltag() in nbtest.tags()
-        ), f"I can't find a solution with the tag {self.celltag()}."
-        self.solution_cell = nbtest.get(self.celltag())
+        doctags = nbtest.tags()
+        celltag = self.celltag()
+        nametag = self.cellid()
+
+        if celltag in doctags:
+            self.solution_cell = nbtest.get(celltag)
+        elif nametag in doctags:
+            self.solution_cell = nbtest.get(nametag)
+        else:
+            self.fail(f"I can't find a solution with the tag {self.celltag()}.")
 
     def setUp(self) -> None:
         """
@@ -65,6 +77,23 @@ class TestQuestion(TestCase):
         return super().setUp()
 
     @classmethod
+    def cellid(cls):
+        """
+        Return the class name in tag format.
+        """
+        return f"@{cls.__name__}"
+
+    @classmethod
+    def celltag(cls):
+        """Produce a unique, opaque identifier for this test question."""
+        m = hashlib.sha1()
+        prefix = cls.__name__[0].lower() + "".join(
+            [l.lower() for l in cls.__name__[1:] if l.isupper()]
+        )
+        m.update(cls.__name__.encode("utf-8"))
+        return f"@{prefix}-{m.hexdigest()[:4]}"
+
+    @classmethod
     def validate(cls):
         """
         The validate() method should check any an all class variables for correctness.
@@ -76,9 +105,6 @@ class TestQuestion(TestCase):
         assert isinstance(
             cls.tokens_forbidden, Iterable
         ), f"""`tokens_forbidden` must be iterable, not a {cls.tokens_forbidden.__class__}"""
-        assert isinstance(
-            cls.tags, Iterable
-        ), f"""`tags` must be iterable, not a {cls.tags.__class__}"""
         error = None
         try:
             cls.__doc__.format(**{item: getattr(cls, item) for item in dir(cls)})
@@ -124,9 +150,24 @@ class TestQuestion(TestCase):
         newtype.validate()
         return newtype
 
-    @classmethod
-    def celltag(cls):
-        return f"@{cls.__name__}"
+
+class QuestionGroup(UserList):
+    """
+    A collection of questions that are grouped together for the purpose
+    of test randomization. During a quiz students will receive one of
+    the questions in the group at random. A QuestionGroup is a good way
+    to support multiple variations of a test question.
+    """
+
+    def __init__(self, init):
+        super().__init__(init)
+
+    ## TODO: What are the functions of this class?
+    ## should the be a union or intersection of components?
+
+    def validate(self):
+        for q in self.data:
+            q.validate()
 
 
 class FunctionQuestion(TestQuestion):
@@ -143,7 +184,7 @@ class FunctionQuestion(TestQuestion):
 
     # Required: The name of the solution function. The function will
     # be put in `self.solution` by the framework code.
-    name = None
+    name: str
 
     # Required: A dictionary of type annotations similar to the ones
     # returned by `inspect.get_annotations()`
@@ -151,6 +192,7 @@ class FunctionQuestion(TestQuestion):
 
     def __init__(self, tests=()):
         super().__init__(tests)
+        self.solution_cell: nbtest.tagcache.TagCacheEntry
 
     def setUp(self):
         super().setUp()
@@ -251,14 +293,3 @@ class CellQuestion(FunctionQuestion):
         # Override the symbol name to use the cell-based wrapper.
         cls.name = "_cell_wrapper"
         return super().validate()
-
-
-class QuestionGroup:
-    """
-    A group of related questions.
-
-    What is this API?
-    """
-
-    def __init__(self, *questions):
-        self._questions = questions

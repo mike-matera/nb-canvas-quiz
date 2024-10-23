@@ -11,6 +11,8 @@ from pathlib import Path
 
 import nbformat
 
+from nbquiz.testbank import bank
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -44,7 +46,7 @@ def get_html(cell):
     raise ValueError(f"No html in get_html(): {cell}")
 
 
-def main(args, tb):
+def main(args):
     # Slurp stdin until EOF
     student_code = sys.stdin.read()
 
@@ -56,13 +58,12 @@ def main(args, tb):
     student_cell["source"] = student_code
 
     testbank_cell = cell_for_tag(nb, "testbank")
-    testbank_cell["source"] += (
-        f"""\ntb.load(*Path("{Path(args.testbank).absolute()}").glob("**/*.ipynb"))"""
-    )
+    for path in bank.paths:
+        testbank_cell["source"] += f"""\nbank.add_path("{path}")"""
+    testbank_cell["source"] += """\nbank.load()"""
 
     # Execute the notebook
     with tempfile.TemporaryDirectory() as td:
-        td = "."
         with open(Path(td) / "output.ipynb", "w") as fh:
             nbformat.write(nb, fh)
 
@@ -94,14 +95,20 @@ def main(args, tb):
             print(f"""{ename}: {evalue}""")
 
         elif has_error(testbank_cell):
-            # Test error (should this ever happen?)
+            # Inernal test error (should this ever happen?)
             rval = 11
             ename, evalue = get_error(testbank_cell)
             print(f"""{ename}: {evalue}""")
 
+        elif has_error(runner_cell):
+            # Internal test error (should this ever happen?)
+            rval = 12
+            ename, evalue = get_error(runner_cell)
+            print(f"""{ename}: {evalue}""")
+
         elif has_error(checker_cell):
             # Test failure
-            rval = 12
+            rval = 13
             print(get_html(runner_cell))
 
         else:

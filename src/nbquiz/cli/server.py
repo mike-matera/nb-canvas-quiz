@@ -7,6 +7,8 @@ import logging
 
 import grpc
 
+from nbquiz.testbank import bank
+
 from ..runtime.server import Checker, checker_pb2_grpc
 
 
@@ -14,9 +16,9 @@ def add_args(parser):
     pass
 
 
-async def run_server(tb) -> None:
+async def run_server() -> None:
     server = grpc.aio.server()
-    checker = Checker(tb)
+    checker = Checker()
     checker_pb2_grpc.add_CheckerServicer_to_server(checker, server)
     listen_addr = "[::]:32453"
     server.add_insecure_port(listen_addr)
@@ -25,6 +27,9 @@ async def run_server(tb) -> None:
     await server.wait_for_termination()
 
 
-def main(args, tb):
+def main(args):
+    # Validate paths so that errors happen sooner rather than later.
+    bank.load()
+
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(run_server(args.testbank))
+    asyncio.run(run_server())

@@ -8,15 +8,14 @@ import time
 
 import grpc
 
+from nbquiz.testbank import bank
+
 from . import checker_pb2, checker_pb2_grpc
 
 logging.basicConfig(level=logging.INFO)
 
 
 class Checker(checker_pb2_grpc.CheckerServicer):
-    def __init__(self, tb):
-        self._tbpath = tb
-
     async def run_tests(
         self,
         request: checker_pb2.TestRequest,
@@ -24,7 +23,7 @@ class Checker(checker_pb2_grpc.CheckerServicer):
     ) -> checker_pb2.TestReply:
         start = time.monotonic()
         proc = await asyncio.create_subprocess_shell(
-            f"""nbquiz -t {self._tbpath} test""",
+            f"""nbquiz {" ".join([f"-t {p}" for p in bank.paths])} test""",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
@@ -36,4 +35,4 @@ class Checker(checker_pb2_grpc.CheckerServicer):
         await proc.wait()
         end = time.monotonic()
         logging.info(f"Request completed in {end-start} seconds.")
-        return checker_pb2.TestReply(response=stdout, status=proc.returncode)
+        return checker_pb2.TestReply(response=stdout.decode("utf-8"), status=proc.returncode)

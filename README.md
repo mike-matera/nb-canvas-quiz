@@ -11,3 +11,6 @@ Things I need:
 1. Checker runtime (server, binary?)
 1. Examples 
 1. A format for testbanks 
+
+Watch this bug about the protobuf version warning:
+https://github.com/protocolbuffers/protobuf/issues/18096

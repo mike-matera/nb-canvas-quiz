@@ -8,37 +8,39 @@ from typing import Union
 
 import nbformat
 
-from nbquiz.question import CellQuestion, FunctionQuestion, TestQuestion
+from nbquiz.question import CellQuestion, FunctionQuestion, QuestionGroup, TestQuestion
 
 logging.basicConfig(level=logging.INFO)
 
 
-class TestBank:
+class _TestBank:
     """A group of test loaded from multiple files."""
 
     def __init__(self):
-        self._tags = {}
         self._required = {}
         self._forbidden = {}
         self._questions = {}
         self._sources = ""
+        self._paths = []
 
-    def load(self, *path: Union[str, Path]) -> None:
-        for p in path:
-            logging.info(f"Loaded testbank file: {p}")
-            self._load(p)
+    def add_path(self, path: Union[str, Path]) -> None:
+        path = Path(path).absolute()
+        if not path.exists():
+            raise ValueError(f"""Path "{path} does not exist.""")
+        logging.info(f"Adding notebook search path: {path}")
+        self._paths.append(path)
+
+    def load(self) -> None:
+        for p in self._paths:
+            for nb in p.glob("*.ipynb"):
+                logging.info(f"Loaded testbank file: {nb}")
+                self._load(nb)
 
         # Rebuild the caches
-        self._tags = {}
         self._required = {}
         self._forbidden = {}
 
         for q in self._questions.values():
-            for t in q.tags:
-                if t not in self._tags:
-                    self._tags[t] = [q]
-                else:
-                    self._tags[t].append(q)
             for r in q.tokens_required:
                 if r not in self._required:
                     self._required[r] = [q]
@@ -51,10 +53,11 @@ class TestBank:
                 else:
                     self._forbidden[f].append(q)
 
+        logging.info(f"""Loaded {self.stats()["questions"]} questions.""")
+
     def stats(self):
         return {
             "questions": len(self._questions),
-            "tags": len(self._tags),
             "required": len(self._required),
             "forbidden": len(self._forbidden),
         }
@@ -82,15 +85,34 @@ class TestBank:
         self._sources += "\n\n" + source
 
         for attr in test_ns:
+            instance = test_ns[attr]
             if (
-                isinstance(test_ns[attr], type)
-                and issubclass(test_ns[attr], TestQuestion)
-                and test_ns[attr] not in [TestQuestion, FunctionQuestion, CellQuestion]
+                not attr.startswith("_")
+                and isinstance(instance, type)
+                and issubclass(instance, TestQuestion)
+                and instance not in [TestQuestion, FunctionQuestion, CellQuestion]
             ):
-                logging.info(f"Found question: {attr}")
-                test_ns[attr].validate()
-                self._questions[test_ns[attr].celltag()] = test_ns[attr]
+                logging.info(f"Found question: {instance.cellid()} tag: {instance.celltag()}")
+                instance.validate()
+                self._questions[instance.celltag()] = instance
+                self._questions[instance.cellid()] = instance
+
+            if isinstance(instance, QuestionGroup):
+                logging.info(f"Found question group: {attr}")
+                for question in instance:
+                    logging.info(f"  Group question: {question}")
+                    question.validate()
+                    self._questions[question.celltag()] = question
+                    self._questions[question.cellid()] = question
 
     @property
     def questions(self):
         return self._questions
+
+    @property
+    def paths(self):
+        return self._paths
+
+
+# Global singleton
+bank = _TestBank()
