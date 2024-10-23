@@ -6,6 +6,7 @@ import logging
 import subprocess
 import sys
 import tempfile
+from importlib.resources import files
 from pathlib import Path
 
 import nbformat
@@ -14,33 +15,54 @@ logging.basicConfig(level=logging.INFO)
 
 
 def add_args(parser):
-    parser.add_argument(
-        "-c", "--celltag", required=True, help="The cell tag belonging to the test."
-    )
+    pass
+
+
+def cell_for_tag(nb, tag):
+    return [
+        cell
+        for cell in nb.cells
+        if "metadata" in cell and "tags" in cell["metadata"] and tag in cell["metadata"]["tags"]
+    ][0]
+
+
+def has_error(cell):
+    return cell["outputs"] and any(["ename" in output for output in cell["outputs"]])
+
+
+def get_error(cell):
+    for output in cell["outputs"]:
+        if "ename" in output:
+            return output["ename"], output["evalue"]
+    raise ValueError("No error in get_error():", cell)
+
+
+def get_html(cell):
+    for output in cell["outputs"]:
+        if "data" in output and "text/html" in output["data"]:
+            return output["data"]["text/html"]
+    raise ValueError(f"No html in get_html(): {cell}")
 
 
 def main(args, tb):
     # Slurp stdin until EOF
     student_code = sys.stdin.read()
 
-    # Construct a notebook:
-    nb = nbformat.v4.new_notebook()
-    nb.cells.append(nbformat.v4.new_code_cell("%load_ext nbtest"))
-    nb.cells.append(nbformat.v4.new_code_cell(student_code))
-    bank = tb._questions[args.celltag]
-    nb.cells.append(nbformat.v4.new_code_cell(bank["source"]))
-    nb.cells.append(
-        nbformat.v4.new_code_cell(f"""%%testing {args.celltag[1:]}
-nbtest_cases = [{args.celltag[1:]}]
-""")
-    )
-    nb.cells.append(
-        nbformat.v4.new_code_cell("""import nbtest
-nbtest.assert_ok()""")
+    # Load the notebook template.
+    template_file = files("nbquiz.resources").joinpath("test-notebook-template.ipynb").read_text()
+    nb = nbformat.reads(template_file, as_version=nbformat.NO_CONVERT)
+
+    student_cell = cell_for_tag(nb, "student")
+    student_cell["source"] = student_code
+
+    testbank_cell = cell_for_tag(nb, "testbank")
+    testbank_cell["source"] += (
+        f"""\ntb.load(*Path("{Path(args.testbank).absolute()}").glob("**/*.ipynb"))"""
     )
 
     # Execute the notebook
     with tempfile.TemporaryDirectory() as td:
+        td = "."
         with open(Path(td) / "output.ipynb", "w") as fh:
             nbformat.write(nb, fh)
 
@@ -60,25 +82,29 @@ nbtest.assert_ok()""")
 
         # Check for errors
         rval = 0
-        if nb.cells[1]["outputs"] and "ename" in nb.cells[1]["outputs"][0]:
+        student_cell = cell_for_tag(nb, "student")
+        testbank_cell = cell_for_tag(nb, "testbank")
+        runner_cell = cell_for_tag(nb, "runner")
+        checker_cell = cell_for_tag(nb, "checker")
+
+        if has_error(student_cell):
             # Error executing student code.
-            rval = 1
-            print(
-                f"""{nb.cells[1]["outputs"][0]["ename"]}: {nb.cells[1]["outputs"][0]["evalue"]}"""
-            )
+            rval = 10
+            ename, evalue = get_error(student_cell)
+            print(f"""{ename}: {evalue}""")
 
-        elif nb.cells[4]["outputs"] and "ename" in nb.cells[4]["outputs"][0]:
-            # Test failure
-            rval = 2
-            print(nb.cells[3]["outputs"][0]["data"]["text/html"])
-
-        elif "ename" in nb.cells[3]["outputs"][0]:
+        elif has_error(testbank_cell):
             # Test error (should this ever happen?)
-            rval = 3
-            print(
-                f"""{nb.cells[3]["outputs"][0]["ename"]}: {nb.cells[3]["outputs"][0]["evalue"]}"""
-            )
+            rval = 11
+            ename, evalue = get_error(testbank_cell)
+            print(f"""{ename}: {evalue}""")
+
+        elif has_error(checker_cell):
+            # Test failure
+            rval = 12
+            print(get_html(runner_cell))
+
         else:
-            print(nb.cells[3]["outputs"][0]["data"]["text/html"])
+            print(get_html(runner_cell))
 
         return rval

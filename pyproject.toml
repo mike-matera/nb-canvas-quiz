@@ -17,8 +17,8 @@ dependencies = [
     "minify_html",
 ]
 
-#[tool.setuptools.package-data]
-#"nbquiz.templates" = ["*.html"]
+[tool.setuptools.package-data]
+"nbquiz.resources" = ["*"]
 
 [build-system]
 requires = ["setuptools"]

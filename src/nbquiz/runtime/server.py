@@ -22,13 +22,13 @@ class Checker(checker_pb2_grpc.CheckerServicer):
         context: grpc.aio.ServicerContext,
     ) -> checker_pb2.TestReply:
         proc = await asyncio.create_subprocess_shell(
-            f"""python -m nbquiz.cli -t {self._tbpath} test -c {request.id}""",
+            f"""nbquiz -t {self._tbpath} test""",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate(input=request.source.encode("utf-8"))
-        if stderr:
+        if stderr != "":
             logging.warning(stderr)
 
         await proc.wait()

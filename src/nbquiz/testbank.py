@@ -21,6 +21,7 @@ class TestBank:
         self._required = {}
         self._forbidden = {}
         self._questions = {}
+        self._sources = ""
 
     def load(self, *path: Union[str, Path]) -> None:
         for p in path:
@@ -33,18 +34,18 @@ class TestBank:
         self._forbidden = {}
 
         for q in self._questions.values():
-            for t in q["class"].tags:
+            for t in q.tags:
                 if t not in self._tags:
                     self._tags[t] = [q]
                 else:
                     self._tags[t].append(q)
-            for r in q["class"].tokens_required:
+            for r in q.tokens_required:
                 if r not in self._required:
                     self._required[r] = [q]
                 else:
                     self._required[r].append(q)
 
-            for f in q["class"].tokens_forbidden:
+            for f in q.tokens_forbidden:
                 if f not in self._forbidden:
                     self._forbidden[f] = [q]
                 else:
@@ -57,6 +58,13 @@ class TestBank:
             "required": len(self._required),
             "forbidden": len(self._forbidden),
         }
+
+    def source(self):
+        """Return a source code blob of the entire test bank."""
+        return self._sources
+
+    def test_for(self, tag):
+        return self._questions.get(tag)
 
     def _load(self, filename: Union[str, Path]):
         nb = nbformat.read(filename, nbformat.NO_CONVERT)
@@ -71,6 +79,8 @@ class TestBank:
         )
         test_ns = {}
         exec(source, test_ns)
+        self._sources += "\n\n" + source
+
         for attr in test_ns:
             if (
                 isinstance(test_ns[attr], type)
@@ -79,10 +89,7 @@ class TestBank:
             ):
                 logging.info(f"Found question: {attr}")
                 test_ns[attr].validate()
-                self._questions[test_ns[attr]._celltag] = {
-                    "class": test_ns[attr],
-                    "source": source,
-                }
+                self._questions[test_ns[attr].celltag()] = test_ns[attr]
 
     @property
     def questions(self):
