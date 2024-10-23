@@ -30,14 +30,6 @@ class TestQuestion(TestCase):
     # String tags that can be used to select questions for a test.
     tags = []
 
-    # Define what tag selects this question, defaults to the class name.
-    celltag = None
-
-    # The name of an attribute in the notebook namespace to test.
-    # The attribute named will be put in `self.solution`
-    # If None, `self.solution` will contain a CellCacheEntry
-    name = None
-
     def __init__(self, tests=()):
         """
         Create the test instance. Failures here will be reported as exceptions in the notebook,
@@ -46,17 +38,17 @@ class TestQuestion(TestCase):
         """
         super().__init__(tests)
         self.validate()
-        try:
-            self.solution_cell = nbtest.get(self._celltag)
-        except KeyError:
-            self.fail(f"I can't find a cell with the tag {self._celltag} in the docstring.")
+        self.solution_cell = None
+
+        assert (
+            self.celltag() in nbtest.tags()
+        ), f"I can't find a solution with the tag {self.celltag()}."
+        self.solution_cell = nbtest.get(self.celltag())
 
     def setUp(self) -> None:
         """
-        Validate the existence of the attribute `self.name` in the solution cell in
-        `self.solution_cell`. Check for required and forbidden syntax. Guarantees
-        that `self.solution` contains the attribute in `self.name`. If `self.name`
-        is `None` then `self.solution` contains the same as `self.solution_cell`.
+        Check for required and forbidden syntax. Guarantees that `self.solution_cell`
+        contains the TagCacheEntry with the solution inside.
         """
 
         alltokens = set((t.__class__ for t in ast.walk(self.solution_cell.tree)))
@@ -69,18 +61,6 @@ class TestQuestion(TestCase):
             assert not any(
                 {token in alltokens for token in self.tokens_forbidden}
             ), """The solution uses forbidden syntax."""
-
-        if self.name is not None:
-            assert (
-                self.name.startswith("_")
-                or self.name in self.solution_cell.assignments
-                or self.name in self.solution_cell.functions
-                or self.name in self.solution_cell.classes
-            ), f"""The name {self.name} has not been defined."""
-            assert self.name in self.solution_cell.ns, f"""{self.name} is not defined."""
-            self.solution = self.solution_cell.ns[self.name]
-        else:
-            self.solution = self.solution_cell
 
         return super().setUp()
 
@@ -99,11 +79,6 @@ class TestQuestion(TestCase):
         assert isinstance(
             cls.tags, Iterable
         ), f"""`tags` must be iterable, not a {cls.tags.__class__}"""
-        if cls.celltag is None:
-            cls._celltag = f"@{cls.__name__}"
-        else:
-            cls._celltag = cls.celltag
-
         error = None
         try:
             cls.__doc__.format(**{item: getattr(cls, item) for item in dir(cls)})
@@ -123,7 +98,7 @@ class TestQuestion(TestCase):
             textwrap.dedent(cls.__doc__).format(
                 **{item: f"""`{getattr(cls, item)}`""" for item in dir(cls)}
             ),
-            cls._celltag,
+            cls.celltag(),
         )
 
     @classmethod
@@ -135,7 +110,7 @@ class TestQuestion(TestCase):
         for name, value in params.items():
             m.update(f"""{name}:{value}""".encode("utf-8"))
 
-        if not classname:
+        if classname is None:
             classname = f"""{cls.__name__}_{m.hexdigest()[0:4]}"""
 
         class_locals = dict(**cls.__dict__)
@@ -148,6 +123,10 @@ class TestQuestion(TestCase):
         newtype = type(classname, bases, class_locals)
         newtype.validate()
         return newtype
+
+    @classmethod
+    def celltag(cls):
+        return f"@{cls.__name__}"
 
 
 class FunctionQuestion(TestQuestion):
@@ -162,16 +141,26 @@ class FunctionQuestion(TestQuestion):
 
     """
 
+    # Required: The name of the solution function. The function will
+    # be put in `self.solution` by the framework code.
+    name = None
+
     # Required: A dictionary of type annotations similar to the ones
     # returned by `inspect.get_annotations()`
     annotations = None
 
+    def __init__(self, tests=()):
+        super().__init__(tests)
+
     def setUp(self):
         super().setUp()
+
+        assert self.name in self.solution_cell.ns, f"""{self.name} is not defined."""
+        self.solution = self.solution_cell.ns[self.name]
+
         assert isinstance(
             self.solution, Callable
         ), f"""{self.name} is not a function (did you redefine it?)."""
-        assert self.annotations is not None, """annotations cannot be none in a FunctionQuestion."""
 
         if not self.name.startswith("_"):
             # Ignore my internal functions.
@@ -193,9 +182,13 @@ class FunctionQuestion(TestQuestion):
 
         def _wrapper(*args, **kwargs):
             rval = inner_function(*args, **kwargs)
-            assert isinstance(
-                rval, self.annotations["return"]
-            ), f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
+            if self.annotations["return"] is not None:
+                assert isinstance(
+                    rval, self.annotations["return"]
+                ), f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
+            else:
+                assert rval is None, f"""The function {self.name} returned {rval} instead of None"""
+
             return rval
 
         # Wrap the solution function.
@@ -217,6 +210,15 @@ class FunctionQuestion(TestQuestion):
     @classmethod
     def validate(cls):
         assert cls.name is not None, """The `name` attribute is required in a FunctionQuestion."""
+        assert hasattr(
+            cls, "annotations"
+        ), """The attribute `annotations` is required in a FunctionQuestion"""
+        assert isinstance(
+            cls.annotations, dict
+        ), """The `annotations` attribute must be a dictionary"""
+        assert (
+            "return" in cls.annotations
+        ), """The `annotations` dictionary must contain the "return" key."""
         cls._resolve_annotations()
         return super().validate()
 
@@ -249,3 +251,14 @@ class CellQuestion(FunctionQuestion):
         # Override the symbol name to use the cell-based wrapper.
         cls.name = "_cell_wrapper"
         return super().validate()
+
+
+class QuestionGroup:
+    """
+    A group of related questions.
+
+    What is this API?
+    """
+
+    def __init__(self, *questions):
+        self._questions = questions

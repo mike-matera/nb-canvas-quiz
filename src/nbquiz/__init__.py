@@ -2,4 +2,4 @@
 Support for Notebook test banks.
 """
 
-from .testcase import CellQuestion, FunctionQuestion, TestQuestion
+from .question import CellQuestion, FunctionQuestion, TestQuestion

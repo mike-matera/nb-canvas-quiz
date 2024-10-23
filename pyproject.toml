@@ -10,6 +10,7 @@ dependencies = [
     "jupyterlab",
     "ipywidgets",
     "grpcio",
+    "grpcio-tools",
     "myst_parser",
     "docutils",
     "cssutils",
@@ -22,6 +23,9 @@ dependencies = [
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project.scripts]
+nbquiz = "nbquiz.cli:main"
 
 [tool.ruff]
 line-length = 100
