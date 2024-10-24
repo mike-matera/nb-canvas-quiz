@@ -8,6 +8,8 @@ The cell should define the variables:
 {% endif %}
 {% endfor %}
 
+{% if annotations["return"] %}
 The result should be *`{{ annotations["return"].__name__ }}`*
+{% endif %}
 
 Add the tag: `{{ celltag }}`

@@ -10,6 +10,7 @@ import ast
 import hashlib
 import re
 import textwrap
+import typing
 from collections import UserList
 from collections.abc import Iterable
 from typing import Callable
@@ -20,7 +21,9 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 import nbtest
 
 _template_env = Environment(
-    loader=PackageLoader("nbquiz", package_path="resources"), autoescape=select_autoescape()
+    loader=PackageLoader("nbquiz", package_path="resources"),
+    autoescape=select_autoescape(),
+    trim_blocks=True,
 )
 
 
@@ -88,7 +91,7 @@ class TestQuestion(TestCase):
         """Produce a unique, opaque identifier for this test question."""
         m = hashlib.sha1()
         prefix = cls.__name__[0].lower() + "".join(
-            [l.lower() for l in cls.__name__[1:] if l.isupper()]
+            [ll.lower() for ll in cls.__name__[1:] if ll.isupper()]
         )
         m.update(cls.__name__.encode("utf-8"))
         return f"@{prefix}-{m.hexdigest()[:4]}"
@@ -127,6 +130,7 @@ class TestQuestion(TestCase):
     @classmethod
     def question(cls):
         """Return the Markdown of a test question."""
+        cls.validate()
         return _template_env.get_template("question_template.md").render(**cls._template_values())
 
     @classmethod
@@ -226,12 +230,14 @@ class FunctionQuestion(TestQuestion):
 
         def _wrapper(*args, **kwargs):
             rval = inner_function(*args, **kwargs)
-            if self.annotations["return"] is not None:
+            if self.annotations["return"] is None:
+                assert rval is None, f"""The function {self.name} returned {rval} instead of None"""
+            elif self.annotations["return"] is typing.Any:
+                pass
+            else:
                 assert isinstance(
                     rval, self.annotations["return"]
                 ), f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
-            else:
-                assert rval is None, f"""The function {self.name} returned {rval} instead of None"""
 
             return rval
 
@@ -274,6 +280,7 @@ class FunctionQuestion(TestQuestion):
 
     @classmethod
     def question(cls):
+        cls.validate()
         values = cls._template_values()
         return _template_env.get_template("function_question_template.md").render(**values)
 
@@ -296,6 +303,8 @@ class CellQuestion(FunctionQuestion):
             updates = {name: args[i] for i, name in enumerate(argnames)}
             updates.update(kwargs)
             result = self.solution_cell.run(updates)
+            # Make sure this wrapper produces the same STDOUT that the cell would.
+            print(result.stdout)
             return result.result
 
         self.solution_cell.ns["_cell_wrapper"] = _cell_wrapper
@@ -309,5 +318,34 @@ class CellQuestion(FunctionQuestion):
 
     @classmethod
     def question(cls):
+        cls.validate()
         values = cls._template_values()
         return _template_env.get_template("cell_question_template.md").render(**values)
+
+
+class ClassQuestion(TestQuestion):
+    """
+    A class that validates solution classes.
+
+    The following are checked:
+
+        1. The name has been defined as a class.
+    """
+
+    def setUp(self):
+        # Validate that the cell defines the required class.
+        assert self.name in self.solution_cell.ns, f"""{self.name} is not defined."""
+        self.solution = self.solution_cell.ns[self.name]
+
+        assert isinstance(
+            self.solution, type
+        ), f"""{self.name} is not a class (did you redefine it?)."""
+
+        if not self.name.startswith("_"):
+            # Ignore my internal classes.
+            assert self.name in self.solution_cell.classes, f"""{self.name} is not a class."""
+            assert (
+                self.solution_cell.classes[self.name].docstring is not None
+            ), f"""The class {self.name} has no docstring."""
+
+        super().setUp()
