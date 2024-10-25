@@ -315,7 +315,6 @@ nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i+1})]
             zf.writestr(f"web_resources/Uploaded Media/{nbfilename}", data=nbformat.writes(nb))
             self._quiz_meta.description += f"<li>{self.file_link(nbfilename)}</li></ul></p>"
 
-            print("Description is:", self._quiz_meta.description)
             # Finalize the test with the file upload question
             self._quiz.questions.append(
                 FileItem(title="Upload", html="""Upload your Jupyter notebook""")
