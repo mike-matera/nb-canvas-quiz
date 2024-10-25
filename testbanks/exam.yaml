@@ -2,18 +2,40 @@
 # YAML that describes a Canvas export. 
 #
 
-title: This is the Final
+title: CIS-15 Final Spring 2024
 
 description: | 
-  # Welcome to the Final for Fall 2024 
+    # CIS-15  Midterm - Spring 2024
 
-  This final has some instructions that go here. 
+    Welcome to the CIS-15 midterm. Please read all of the instructions. 
+    You will be asked to write functions. There's a checker program that 
+    you can use to make sure that your functions are correct. Instructions 
+    for the checker program are the same as the practice midterm. If you 
+    haven't done the practice you should stop and do it first. See below 
+    for a link to download the exam notebook.
 
-  ## Code of Conduct 
+    ## Partial Credit
 
-  You are allowed to use the book, your notes and Google on the final. 
-  You are not allowed to work in groups or use an A.I. coding assistant 
-  like ChatGPT. 
+    Partial credit will be given to all questions. You should attempt an 
+    answer to each question and submit your work even if the checker program 
+    finds problems with your answer. At minimum you should have a function 
+    with a docstring that takes the correct arguments. 
+
+    ## Submitting Answers
+
+    The last question asks you to upload your notebook file. The code in 
+    your file is the only code that is graded. It doesn't matter what 
+    you put in the other answer fields. 
+
+    ## Code of Conduct
+
+    You are allowed to use your notes, your book and the internet to 
+    find answers to the questions. Each question can be answered 
+    using only commands and syntax that you have been shown in class. 
+    Do not work in teams or use other people's answers. The use of A.I. 
+    coding assistants, for example ChatGPT, is not allowed.
+
+    Once you begin the test you have three hours to submit your code. 
 
 questions:
   - SimpleArgReverse
@@ -30,7 +52,4 @@ questions:
       - SimpleArgReverse
       - name: TriangleMaxArea2
         params:
-          name: "in_group"
-          base: "boos"
-          height: "heeet"
-          limit: 1000000
+          limit: 47
