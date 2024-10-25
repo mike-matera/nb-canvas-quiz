@@ -15,6 +15,7 @@ dependencies = [
     "docutils",
     "cssutils",
     "minify_html",
+    "pyyaml",
 ]
 
 [tool.setuptools.package-data]

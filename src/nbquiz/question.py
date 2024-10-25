@@ -134,25 +134,22 @@ class TestQuestion(TestCase):
         return _template_env.get_template("question_template.md").render(**cls._template_values())
 
     @classmethod
-    def variant(cls, classname=None, extra_bases=None, **params):
+    def variant(cls, **params):
         """Create a variant of a test question."""
         cls.validate()
-        m = hashlib.sha1()
-        m.update(cls.__name__.encode("utf-8"))
-        for name, value in params.items():
-            m.update(f"""{name}:{value}""".encode("utf-8"))
 
-        if classname is None:
-            classname = f"""{cls.__name__}_{m.hexdigest()[0:4]}"""
+        # Generate a derived class name.
+        if not params:
+            raise ValueError("The variant parameters can not be empty.")
+        classname = cls.__name__ + "_" + "_".join([f"{k}:{v}" for k, v in params.items()])
+
+        m = hashlib.sha1()
+        m.update(classname.encode("utf-8"))
 
         class_locals = dict(**cls.__dict__)
         class_locals.update(params)
 
-        bases = cls.__bases__
-        if extra_bases:
-            bases = bases + tuple(extra_bases)
-
-        newtype = type(classname, bases, class_locals)
+        newtype = type(classname, cls.__bases__, class_locals)
         newtype.validate()
         return newtype
 
@@ -165,7 +162,8 @@ class QuestionGroup(UserList):
     to support multiple variations of a test question.
     """
 
-    def __init__(self, init):
+    def __init__(self, name="QuestionGroup", init=None):
+        self.__name__ = name
         super().__init__(init)
 
     ## TODO: What are the functions of this class?

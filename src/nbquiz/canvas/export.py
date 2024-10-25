@@ -2,17 +2,29 @@
 The ability to construct a Canvas quiz export.
 """
 
+import logging
 import uuid
 import zipfile
 from abc import ABC
 from dataclasses import dataclass, field
+from io import TextIOWrapper
+from pathlib import Path
 from typing import Union
+from xml.sax.saxutils import escape
 
+import yaml
 from jinja2 import Environment, PackageLoader, Template
+
+from nbquiz.question import QuestionGroup, TestQuestion
+
+from ..testbank import bank
+from .html import md_to_canvas_html
 
 jinja = Environment(
     loader=PackageLoader("nbquiz", package_path="resources/canvas"),
 )
+
+logging.basicConfig(level=logging.INFO)
 
 
 @dataclass
@@ -40,7 +52,9 @@ class EssayItem(_Item):
     template = jinja.get_template("assessment/item_essay.xml")
 
     def render(self):
-        return EssayItem.template.render(id=self.id, title=self.title, html=self.html)
+        return EssayItem.template.render(
+            id=self.id, title=escape(self.title), html=escape(self.html)
+        )
 
 
 @dataclass
@@ -50,7 +64,9 @@ class FileItem(_Item):
     template = jinja.get_template("assessment/item_file.xml")
 
     def render(self):
-        return FileItem.template.render(id=self.id, title=self.title, html=self.html)
+        return FileItem.template.render(
+            id=self.id, title=escape(self.title), html=escape(self.html)
+        )
 
 
 @dataclass
@@ -65,7 +81,7 @@ class Section(_Chunk):
 
     def render(self):
         return Section.template.render(
-            id=self.id, title=self.title, items="\n".join([i.render() for i in self.items])
+            id=self.id, title=escape(self.title), items="\n".join([i.render() for i in self.items])
         )
 
 
@@ -81,7 +97,9 @@ class Assessment(_Chunk):
 
     def render(self):
         return Assessment.template.render(
-            id=self.id, title=self.title, questions="\n".join([i.render() for i in self.questions])
+            id=self.id,
+            title=escape(self.title),
+            questions="\n".join([i.render() for i in self.questions]),
         )
 
 
@@ -100,8 +118,8 @@ class AssessmentMeta(_Chunk):
         return AssessmentMeta.template.render(
             id=self.id,
             assessment_id=self.assessment_id,
-            title=self.title,
-            description=self.description,
+            title=escape(self.title),
+            description=escape(self.description),
         )
 
 
@@ -128,7 +146,7 @@ class FileResource(_Chunk):
     filename: str = None  # assumed to b in "web_resources/Uploaded Media/"
 
     def render(self):
-        return FileResource.template.render(id=self.id, filename=self.filename)
+        return FileResource.template.render(id=self.id, filename=escape(self.filename))
 
 
 @dataclass
@@ -146,20 +164,104 @@ class Manifest(_Chunk):
         )
 
 
-q1 = EssayItem(title="question1", html="instructions1")
-q2 = EssayItem(title="question2", html="instructions2")
-group = Section(title="Question Group", items=[q1, q2])
-q3 = FileItem(title="Upload", html="Submit Here")
-quiz = Assessment(title="My Test Assessment", questions=[group, q3])
-meta = AssessmentMeta(assessment_id=quiz.id, title="This is the final", description="Do it now!")
-asmr = AssessmentResource(assessment_id=quiz.id)
-file = FileResource(filename="temp_test_stdin.txt")
-manifest = Manifest(resources=[asmr, file])
+class CanvasExport:
+    """
+    An API to construct an export package containing one quiz and arbitrary files.
+    """
 
+    def __init__(self, title, description):
+        self._quiz = Assessment(title=title, questions=[])
+        self._quiz_meta = AssessmentMeta(
+            assessment_id=self._quiz.id, title=title, description=md_to_canvas_html(description)
+        )
+        self._quiz_res = AssessmentResource(assessment_id=self._quiz.id)
+        self._manifest = Manifest(resources=[self._quiz_res])
+        self._files = []
 
-with zipfile.ZipFile("output.zip", "w") as zf:
-    zf.writestr("imsmanifest.xml", manifest.render())
-    zf.writestr(f"{quiz.id}/{quiz.id}.xml", quiz.render())
-    zf.writestr(f"{quiz.id}/assessment_meta.xml", meta.render())
-    zf.writestr("non_cc_assessments/", "")
-    zf.write(arcname=f"web_resources/Uploaded Media/{file.filename}", filename=file.filename)
+    @classmethod
+    def from_yaml(cls, stream: TextIOWrapper):
+        """Factory method to create a test from a YAML description."""
+
+        test = yaml.load(stream, Loader=yaml.Loader)
+
+        # TODO: validate YAML
+        export = CanvasExport(title=test["title"], description=test["description"])
+
+        def elaborate_group(questions_data):
+            for question_data in questions_data:
+                match question_data:
+                    case {"group": _, "questions": _}:
+                        raise ValueError("Canvas does not allow groups in groups.")
+                    case {"name": name, "params": params}:
+                        question = bank.find(f"@{name}")
+                        variant = question.variant(**params)
+                        yield variant
+                    case str() as name:
+                        question = bank.find(f"@{name}")
+                        if isinstance(question, QuestionGroup):
+                            raise ValueError("Canvas does not allow groups in groups.")
+                        yield bank.find(f"@{name}")
+
+        for question_data in test["questions"]:
+            match question_data:
+                case {"group": group, "questions": questions}:
+                    export.add_group(QuestionGroup(group, list(elaborate_group(questions))))
+
+                case {"name": name, "params": params}:
+                    question = bank.find(f"@{name}")
+                    variant = question.variant(**params)
+                    export.add_question(variant)
+
+                case str() as name:
+                    question = bank.find(f"@{name}")
+                    if isinstance(question, type) and issubclass(question, TestQuestion):
+                        export.add_question(question)
+                    elif isinstance(question, QuestionGroup):
+                        export.add_group(question)
+
+                case _:
+                    raise ValueError(f"I don't understand this: {question_data}")
+
+        return export
+
+    def add_file(self, name):
+        p = Path(name)
+        if not p.exits():
+            raise ValueError(f"File {p} does not exist.")
+        self._files.append(p.absolute())
+
+    def add_question(self, question):
+        logging.info(f"Adding question: {question}")
+        self._quiz.questions.append(
+            EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
+        )
+
+    def add_group(self, group):
+        logging.info(f"Adding question: {group}")
+        self._quiz.questions.append(
+            Section(
+                title="Group",
+                items=[
+                    EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
+                    for question in group
+                ],
+            )
+        )
+
+    def write(self, filename):
+        with zipfile.ZipFile(filename, "w") as zf:
+            # Finalize and write the file resources.
+            for file in self._files:
+                self._manifest.resources.append(FileResource(filename=file.name))
+                zf.write(arcname=f"web_resources/Uploaded Media/{file.name}", filename=file)
+
+            # Finalize the test with the file upload question
+            self._quiz.questions.append(
+                FileItem(title="Upload", html="""Upload your Jupyter notebook""")
+            )
+
+            # Write out the rest of the resources.
+            zf.writestr("imsmanifest.xml", self._manifest.render())
+            zf.writestr(f"{self._quiz.id}/{self._quiz.id}.xml", self._quiz.render())
+            zf.writestr(f"{self._quiz.id}/assessment_meta.xml", self._quiz_meta.render())
+            zf.writestr("non_cc_assessments/", "")

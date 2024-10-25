@@ -23,8 +23,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "-t",
     "--testbank",
-    required=True,
-    help="A comman separated list of paths that will be searched for testbank files.",
+    required=False,
+    help="A comma separated list of paths that will be searched for test bank files.",
 )
 
 subparsers = parser.add_subparsers(help="subcommand help", required=True)

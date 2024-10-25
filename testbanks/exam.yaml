@@ -1,0 +1,36 @@
+#
+# YAML that describes a Canvas export. 
+#
+
+title: This is the Final
+
+description: | 
+  # Welcome to the Final for Fall 2024 
+
+  This final has some instructions that go here. 
+
+  ## Code of Conduct 
+
+  You are allowed to use the book, your notes and Google on the final. 
+  You are not allowed to work in groups or use an A.I. coding assistant 
+  like ChatGPT. 
+
+questions:
+  - SimpleArgReverse
+  - TriangleMaxArea2Group
+  - TriangleMaxArea2CellGroup
+  - name: TriangleMaxArea2
+    params:
+      name: "override_in_yaml"
+      base: "boos"
+      height: "heeet"
+      limit: 1000000
+  - group: MyGroupName
+    questions:
+      - SimpleArgReverse
+      - name: TriangleMaxArea2
+        params:
+          name: "in_group"
+          base: "boos"
+          height: "heeet"
+          limit: 1000000
