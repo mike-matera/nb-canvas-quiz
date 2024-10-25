@@ -1,0 +1,7 @@
+<resource identifier="{{ assessment_id }}" type="imsqti_xmlv1p2">
+  <file href="{{ assessment_id }}/{{ assessment_id }}.xml"/>
+  <dependency identifierref="{{ id }}"/>
+</resource>
+<resource identifier="{{ id }}" type="associatedcontent/imscc_xmlv1p1/learning-application-resource" href="{{ assessment_id }}/assessment_meta.xml">
+  <file href="{{ assessment_id }}/assessment_meta.xml"/>
+</resource>
