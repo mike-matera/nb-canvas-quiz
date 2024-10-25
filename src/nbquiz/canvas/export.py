@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Union
 from xml.sax.saxutils import escape
 
+import nbformat
 import yaml
 from jinja2 import Environment, PackageLoader, Template
 
@@ -248,13 +249,73 @@ class CanvasExport:
             )
         )
 
+    def file_link(self, filename):
+        return f"""<a class="instructure_file_link inline_disabled" title="{filename}" href="$IMS-CC-FILEBASE$/Uploaded%20Media/{filename}?canvas_=1&amp;canvas_qs_wrap=1" target="_blank" data-canvas-previewable="false">{filename}</a>"""
+
     def write(self, filename):
+        # Generate a companion notebook
+
+        nb = nbformat.v4.new_notebook()
+        nb.cells.append(
+            nbformat.v4.new_code_cell(
+                """%load_ext nbtest""",
+                metadata={"editable": False, "deletable": False},
+            ),
+        )
+        nb.cells.append(
+            nbformat.v4.new_markdown_cell(
+                f"""# {self._quiz_meta.title}
+{self._quiz_meta.description}
+""",
+                metadata={"editable": False, "deletable": False},
+            )
+        )
+        for i, question in enumerate(self._quiz.questions):
+            nb.cells.append(
+                nbformat.v4.new_markdown_cell(
+                    f"""# Question {i+1}
+Please answer question #{i+1} in the next cell.
+""",
+                    metadata={"editable": False, "deletable": False},
+                )
+            )
+            nb.cells.append(
+                nbformat.v4.new_code_cell(
+                    f"""\"""
+@answer{i+1}
+Add the checker tag here: 
+\"""
+""",
+                    metadata={"editable": True, "deletable": False},
+                )
+            )
+            nb.cells.append(
+                nbformat.v4.new_code_cell(
+                    f"""%%testing @answer{i+1} 
+import nbquiz.runtime.client
+nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i+1})]
+""",
+                    metadata={"editable": False, "deletable": False},
+                )
+            )
+
         with zipfile.ZipFile(filename, "w") as zf:
-            # Finalize and write the file resources.
+            # Add a section to the description with a list of files:
+            self._quiz_meta.description += """<p>Attached files:<ul>"""
+
+            # Finalize and write any additional file resources.
             for file in self._files:
                 self._manifest.resources.append(FileResource(filename=file.name))
-                zf.write(arcname=f"web_resources/Uploaded Media/{file.name}", filename=file)
+                zf.write(arcname=f"web_resources/Uploaded Media/{file.name}", file=file)
+                self._quiz_meta.description += f"<li>{self.file_link(file.name)}</li>"
 
+            # Add the test file to the manifest.
+            nbfilename = f"{self._quiz_meta.title}.ipynb"
+            self._manifest.resources.append(FileResource(filename=nbfilename))
+            zf.writestr(f"web_resources/Uploaded Media/{nbfilename}", data=nbformat.writes(nb))
+            self._quiz_meta.description += f"<li>{self.file_link(nbfilename)}</li></ul></p>"
+
+            print("Description is:", self._quiz_meta.description)
             # Finalize the test with the file upload question
             self._quiz.questions.append(
                 FileItem(title="Upload", html="""Upload your Jupyter notebook""")
