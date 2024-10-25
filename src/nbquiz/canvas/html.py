@@ -1,4 +1,4 @@
-from pathlib import Path
+from importlib.resources import files
 
 import cssutils
 import minify_html
@@ -9,7 +9,7 @@ from myst_parser.docutils_ import Parser
 from pygments.formatters import get_formatter_by_name
 
 
-class MyTranslator(_html_base.HTMLTranslator):
+class CanvasHTMLTranslator(_html_base.HTMLTranslator):
     def __init__(self, document):
         super().__init__(document)
         fmter = get_formatter_by_name("html")
@@ -53,13 +53,17 @@ class MyTranslator(_html_base.HTMLTranslator):
         self.report_messages(node)
 
 
-class MyWriter(_html_base.Writer):
+class CanvasHTMLWriter(_html_base.Writer):
     supported = Writer.supported + ("canvas",)
-    default_template = Path("template.txt")
+
+    def apply_template(self):
+        """Do not assume template is a file."""
+        subs = self.interpolation_dict()
+        return self.document.settings.template % subs
 
     def __init__(self):
         super().__init__()
-        self.translator_class = MyTranslator
+        self.translator_class = CanvasHTMLTranslator
 
 
 def md_to_canvas_html(source):
@@ -69,9 +73,9 @@ def md_to_canvas_html(source):
 
     output = publish_string(
         source=source,
-        writer=MyWriter(),
+        writer=CanvasHTMLWriter(),
         settings_overrides={
-            "template": Path(__file__).parent / "canvas_html_template.txt",
+            "template": files("nbquiz.resources").joinpath("canvas_html_template.txt").read_text(),
             "myst_enable_extensions": ["deflist", "colon_fence"],
             "embed_stylesheet": False,
         },
