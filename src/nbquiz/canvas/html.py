@@ -1,3 +1,14 @@
+"""
+Convert markdown to Canvas friendly HTML.
+
+Canvas does not allow for <style> tags inside of content boxes
+and obviously no JS. The default Docutils HTML relies heavily on
+classed <span> and <div> tags to produce a wide range of visual styles
+that are not possible in Canvas.
+
+TODO: Docutils inserts <aside> tags when there are errors. Mute them.
+"""
+
 from importlib.resources import files
 
 import cssutils
@@ -10,6 +21,10 @@ from pygments.formatters import get_formatter_by_name
 
 
 class CanvasHTMLTranslator(_html_base.HTMLTranslator):
+    """
+    Vistor to produce the very simple HTML that Canvas needs.
+    """
+
     def __init__(self, document):
         super().__init__(document)
         fmter = get_formatter_by_name("html")

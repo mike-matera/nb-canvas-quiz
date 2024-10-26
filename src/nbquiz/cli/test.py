@@ -1,5 +1,23 @@
 """
-Execute the checker on a test question from STDIN.
+Execute the checker on a test question from STDIN. The basic process is:
+
+1. Read a code snippet from STDIN
+2. Construct a notebook containing the code snippet
+3. Execute the notebook with jupyter
+4. Parse the notebook for result values
+5. Write results to STDOUT
+
+Security notes:
+
+Student code runs in the jupyter process. The use of STDIN/STDOUT and
+return values reduces the attack surface between this utility an the
+server that executes it. Any non-zero exit of this utility will be interpreted
+as a test failure.
+
+TODO: Use unshare() if possible to limit access to the file system
+TODO: Enable auditing in the interpreter running jupyter
+TODO: Parse and validate student code.
+
 """
 
 import logging
@@ -89,26 +107,26 @@ def main(args):
         checker_cell = cell_for_tag(nb, "checker")
 
         if has_error(student_cell):
-            # Error executing student code.
+            # Error executing student code. (Normal error.)
             rval = 10
             ename, evalue = get_error(student_cell)
             print(f"""{ename}: {evalue}""")
 
         elif has_error(testbank_cell):
             # Inernal test error (should this ever happen?)
-            rval = 11
+            rval = 100
             ename, evalue = get_error(testbank_cell)
             print(f"""{ename}: {evalue}""")
 
         elif has_error(runner_cell):
             # Internal test error (should this ever happen?)
-            rval = 12
+            rval = 101
             ename, evalue = get_error(runner_cell)
             print(f"""{ename}: {evalue}""")
 
         elif has_error(checker_cell):
-            # Test failure
-            rval = 13
+            # Test failure (Normal error.)
+            rval = 11
             print(get_html(runner_cell))
 
         else:

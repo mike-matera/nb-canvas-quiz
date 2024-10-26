@@ -170,7 +170,9 @@ class CanvasExport:
     An API to construct an export package containing one quiz and arbitrary files.
     """
 
-    def __init__(self, title, description):
+    def __init__(self, title: str, description: str):
+        """Create a Canvas quiz export with the given title and description."""
+
         self._quiz = Assessment(title=title, questions=[])
         self._quiz_meta = AssessmentMeta(
             assessment_id=self._quiz.id, title=title, description=md_to_canvas_html(description)
@@ -181,7 +183,7 @@ class CanvasExport:
 
     @classmethod
     def from_yaml(cls, stream: TextIOWrapper):
-        """Factory method to create a test from a YAML description."""
+        """Factory method to create an export package from a YAML description."""
 
         test = yaml.load(stream, Loader=yaml.Loader)
 
@@ -225,19 +227,25 @@ class CanvasExport:
 
         return export
 
-    def add_file(self, name):
+    def add_file(self, name: str):
+        """Add a file path to the uploaded media."""
+
         p = Path(name)
         if not p.exits():
             raise ValueError(f"File {p} does not exist.")
         self._files.append(p.absolute())
 
-    def add_question(self, question):
+    def add_question(self, question: TestQuestion):
+        """Add a test question to the assessment."""
+
         logging.info(f"Adding question: {question}")
         self._quiz.questions.append(
             EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
         )
 
     def add_group(self, group):
+        """Add a question group to the assessment."""
+
         logging.info(f"Adding question: {group}")
         self._quiz.questions.append(
             Section(
@@ -249,11 +257,8 @@ class CanvasExport:
             )
         )
 
-    def file_link(self, filename):
-        return f"""<a class="instructure_file_link inline_disabled" title="{filename}" href="$IMS-CC-FILEBASE$/Uploaded%20Media/{filename}?canvas_=1&amp;canvas_qs_wrap=1" target="_blank" data-canvas-previewable="false">{filename}</a>"""
-
     def write(self, filename):
-        # Generate a companion notebook
+        """Write the assessment export ZIP file to disk."""
 
         nb = nbformat.v4.new_notebook()
         nb.cells.append(
@@ -299,6 +304,9 @@ nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i+1})]
                 )
             )
 
+        def file_link(filename):
+            return f"""<a class="instructure_file_link inline_disabled" title="{filename}" href="$IMS-CC-FILEBASE$/Uploaded%20Media/{filename}?canvas_=1&amp;canvas_qs_wrap=1" target="_blank" data-canvas-previewable="false">{filename}</a>"""
+
         with zipfile.ZipFile(filename, "w") as zf:
             # Add a section to the description with a list of files:
             self._quiz_meta.description += """<p>Attached files:<ul>"""
@@ -307,13 +315,13 @@ nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i+1})]
             for file in self._files:
                 self._manifest.resources.append(FileResource(filename=file.name))
                 zf.write(arcname=f"web_resources/Uploaded Media/{file.name}", file=file)
-                self._quiz_meta.description += f"<li>{self.file_link(file.name)}</li>"
+                self._quiz_meta.description += f"<li>{file_link(file.name)}</li>"
 
             # Add the test file to the manifest.
             nbfilename = f"{self._quiz_meta.title}.ipynb"
             self._manifest.resources.append(FileResource(filename=nbfilename))
             zf.writestr(f"web_resources/Uploaded Media/{nbfilename}", data=nbformat.writes(nb))
-            self._quiz_meta.description += f"<li>{self.file_link(nbfilename)}</li></ul></p>"
+            self._quiz_meta.description += f"<li>{file_link(nbfilename)}</li></ul></p>"
 
             # Finalize the test with the file upload question
             self._quiz.questions.append(
