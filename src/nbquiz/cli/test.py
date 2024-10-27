@@ -33,6 +33,11 @@ from nbquiz.testbank import bank
 
 logging.basicConfig(level=logging.INFO)
 
+# gRPC limits messages to 4MB. That's small enough to prevent the server
+# from crashing but student code should never be that big. Set a reasonable
+# limit.
+QUESTION_SIZE_MAX: int = 4096
+
 
 def add_args(parser):
     pass
@@ -67,6 +72,9 @@ def get_html(cell):
 def main(args):
     # Slurp stdin until EOF
     student_code = sys.stdin.read()
+
+    if len(student_code) > QUESTION_SIZE_MAX:
+        raise ValueError("Student code exceeds the maximum.")
 
     # Load the notebook template.
     template_file = files("nbquiz.resources").joinpath("test-notebook-template.ipynb").read_text()
