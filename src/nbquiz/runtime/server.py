@@ -46,5 +46,5 @@ class Checker(checker_pb2_grpc.CheckerServicer):
             return checker_pb2.TestReply(response=stdout.decode("utf-8"), status=proc.returncode)
         else:
             # Don't give an attacker any information about the failure.
-            logging.error("The checker had an internal error: {proc.returncode}: {stdout}")
+            logging.error(f"The checker had an internal error: {proc.returncode}: {stdout}")
             return checker_pb2.TestReply(response="""An unexpected error has ocurred.""", status=1)

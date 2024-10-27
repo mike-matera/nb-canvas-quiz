@@ -6,9 +6,12 @@ import grpc
 
 from . import checker_pb2, checker_pb2_grpc
 
+HOST = "localhost"
+PORT = 32222
+
 
 def check(code):
-    with grpc.insecure_channel("localhost:32453") as channel:
+    with grpc.insecure_channel(f"{HOST}:{PORT}") as channel:
         stub = checker_pb2_grpc.CheckerStub(channel)
         response = stub.run_tests(checker_pb2.TestRequest(source=code))
     return response.status, response.response

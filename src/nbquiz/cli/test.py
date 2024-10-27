@@ -107,26 +107,29 @@ def main(args):
         checker_cell = cell_for_tag(nb, "checker")
 
         if has_error(student_cell):
-            # Error executing student code. (Normal error.)
+            # Error is in the student code cell. (Normal error.)
             rval = 10
             ename, evalue = get_error(student_cell)
             print(f"""{ename}: {evalue}""")
 
         elif has_error(testbank_cell):
-            # Inernal test error (should this ever happen?)
+            # The error is in the testbank. This errors should be logged
+            # on the server but not passed back to the user.
             rval = 100
             ename, evalue = get_error(testbank_cell)
             print(f"""{ename}: {evalue}""")
 
         elif has_error(runner_cell):
-            # Internal test error (should this ever happen?)
-            rval = 101
+            # The runner cell has an error. This this might have feedback for
+            # the test developer and it might have feedback for the student
+            # (Normal error.)
+            rval = 11
             ename, evalue = get_error(runner_cell)
             print(f"""{ename}: {evalue}""")
 
         elif has_error(checker_cell):
-            # Test failure (Normal error.)
-            rval = 11
+            # A test has failed. (Normal error.)
+            rval = 12
             print(get_html(runner_cell))
 
         else:

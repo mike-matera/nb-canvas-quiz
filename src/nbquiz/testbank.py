@@ -49,7 +49,9 @@ class _TestBank:
         """Match a list of tags to the testbank, return a list of all matching tests."""
         questions = [self._questions[tag] for tag in tags if tag in self._questions]
         if not questions:
-            raise ValueError("""No question tag found. Did you add the tag from the question?""")
+            raise ValueError(
+                f"""I can't find a test for any of the tags: {", ".join(tags)}. Did you add the tag from the question?"""
+            )
         return questions
 
     def find(self, tag: str) -> TestQuestion:
