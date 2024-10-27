@@ -39,8 +39,9 @@ def main():
     args = parser.parse_args()
 
     # Load the tesbanks for subcommands.
-    for b in args.testbank.split(","):
-        bank.add_path(b)
+    if args.testbank is not None:
+        for b in args.testbank.split(","):
+            bank.add_path(b)
 
     # Call the subcommand.
     return args.func(args)
