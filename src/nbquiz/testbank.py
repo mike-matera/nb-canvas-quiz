@@ -3,6 +3,7 @@ Interface for a group of test banks.
 """
 
 import logging
+import zipfile
 from pathlib import Path
 from typing import Iterable, Union
 
@@ -30,9 +31,17 @@ class _TestBank:
 
     def load(self) -> None:
         for p in self._paths:
-            for nb in p.glob("*.ipynb"):
-                logging.info(f"Loaded testbank file: {nb}")
-                self._load(nb)
+            if p.suffix == ".zip":
+                with zipfile.ZipFile(p, "r") as zip:
+                    for file in zip.namelist():
+                        with zip.open(file) as file:
+                            self._load(file)
+                            logging.info(f"Loaded zipped testbank file: {file.name}")
+            else:
+                for nb in p.glob("*.ipynb"):
+                    with open(nb) as file:
+                        self._load(nb)
+                    logging.info(f"Loaded testbank file: {nb}")
 
         logging.info(f"""Loaded {self.stats()["questions"]} questions.""")
 
@@ -61,8 +70,8 @@ class _TestBank:
             raise ValueError(f"Cannot find tag: {tag}")
         return found[0]
 
-    def _load(self, filename: Union[str, Path]):
-        nb = nbformat.read(filename, nbformat.NO_CONVERT)
+    def _load(self, file):
+        nb = nbformat.read(file, nbformat.NO_CONVERT)
         source = "\n\n".join(
             [
                 cell["source"]
