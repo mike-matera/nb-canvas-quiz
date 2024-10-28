@@ -1,0 +1,11 @@
+title: str()
+description: str()
+questions: list(str(), include('variant'), include('group'), min=1)
+---
+variant:
+  name: str()
+  params: map()
+---
+group:
+  group: str()
+  questions: list(str(), include('variant'))

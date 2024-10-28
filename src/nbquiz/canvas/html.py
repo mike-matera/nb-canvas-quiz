@@ -19,6 +19,19 @@ from docutils.writers.html5_polyglot import Writer
 from myst_parser.docutils_ import Parser
 from pygments.formatters import get_formatter_by_name
 
+MYST_EXTENSIONS = [
+    "replacements",
+    "dollarmath",
+    "amsmath",
+    "substitution",
+    "colon_fence",
+    "deflist",
+    "fieldlist",
+    "attrs_inline",
+    "attrs_block",
+    "html_image",
+]
+
 
 class CanvasHTMLTranslator(_html_base.HTMLTranslator):
     """
@@ -27,6 +40,7 @@ class CanvasHTMLTranslator(_html_base.HTMLTranslator):
 
     def __init__(self, document):
         super().__init__(document)
+        self._pia = False
         fmter = get_formatter_by_name("html")
         styledefs = fmter.get_style_defs("")
         css = cssutils.parseString(styledefs)
@@ -37,9 +51,16 @@ class CanvasHTMLTranslator(_html_base.HTMLTranslator):
         }
 
     def visit_literal(self, node):
-        self.body.append(self.starttag(node, "code", "", CLASS=""))
+        style = ""
+        if "pia" in node["classes"] and "invisible" in node["classes"]:
+            style = "display:inline-block; overflow:hidden; width: 1px; height: 1px"
+        self.body.append(self.starttag(node, "code", style=style, CLASS=""))
 
     def depart_literal(self, node):
+        if "pia" in node["classes"] and "invisible" not in node["classes"]:
+            self.body.append(
+                """<span style="display:inline-block; overflow:hidden; width: 1px; height: 1px">_</span>"""
+            )
         self.body.append("</code>")
 
     def visit_inline(self, node):
@@ -91,8 +112,9 @@ def md_to_canvas_html(source):
         writer=CanvasHTMLWriter(),
         settings_overrides={
             "template": files("nbquiz.resources").joinpath("canvas_html_template.txt").read_text(),
-            "myst_enable_extensions": ["deflist", "colon_fence"],
+            "myst_enable_extensions": MYST_EXTENSIONS,
             "embed_stylesheet": False,
+            "stylesheet_dirs": [],
         },
         parser=Parser(),
     )

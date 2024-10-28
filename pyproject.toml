@@ -17,6 +17,7 @@ dependencies = [
     "cssutils",
     "minify_html",
     "pyyaml",
+    "yamale",
 ]
 
 [tool.setuptools.package-data]

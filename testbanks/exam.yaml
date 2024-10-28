@@ -5,8 +5,6 @@
 title: CIS-15 Final Spring 2024
 
 description: | 
-    # CIS-15  Midterm - Spring 2024
-
     Welcome to the CIS-15 midterm. Please read all of the instructions. 
     You will be asked to write functions. There's a checker program that 
     you can use to make sure that your functions are correct. Instructions 
@@ -38,6 +36,7 @@ description: |
     Once you begin the test you have three hours to submit your code. 
 
 questions:
+  - MathQuestion
   - SimpleArgReverse
   - TriangleMaxArea2Group
   - TriangleMaxArea2CellGroup
@@ -47,7 +46,7 @@ questions:
       base: "boos"
       height: "heeet"
       limit: 1000000
-  - group: MyGroupName
+  - group: My Group
     questions:
       - SimpleArgReverse
       - name: TriangleMaxArea2

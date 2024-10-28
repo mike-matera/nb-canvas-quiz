@@ -7,18 +7,16 @@ import uuid
 import zipfile
 from abc import ABC
 from dataclasses import dataclass, field
-from io import TextIOWrapper
 from pathlib import Path
 from typing import Union
 from xml.sax.saxutils import escape
 
 import nbformat
-import yaml
 from jinja2 import Environment, PackageLoader, Template
 
-from nbquiz.question import QuestionGroup, TestQuestion
+from nbquiz.question import TestQuestion
+from nbquiz.quiz import Quiz
 
-from ..testbank import bank
 from .html import md_to_canvas_html
 
 jinja = Environment(
@@ -165,67 +163,30 @@ class Manifest(_Chunk):
         )
 
 
-class CanvasExport:
+class CanvasExport(Quiz):
     """
     An API to construct an export package containing one quiz and arbitrary files.
     """
 
-    def __init__(self, title: str, description: str):
+    def __init__(self):
         """Create a Canvas quiz export with the given title and description."""
 
-        self._quiz = Assessment(title=title, questions=[])
+        self._quiz = Assessment(title="Quiz", questions=[])
         self._quiz_meta = AssessmentMeta(
-            assessment_id=self._quiz.id, title=title, description=md_to_canvas_html(description)
+            assessment_id=self._quiz.id, title="Quiz", description="Description"
         )
         self._quiz_res = AssessmentResource(assessment_id=self._quiz.id)
         self._manifest = Manifest(resources=[self._quiz_res])
         self._files = []
 
-    @classmethod
-    def from_yaml(cls, stream: TextIOWrapper):
-        """Factory method to create an export package from a YAML description."""
+    def set_title(self, title):
+        """Set the title in Canvas. Visible to students."""
+        self._quiz.title = title
+        self._quiz_meta.title = title
 
-        test = yaml.load(stream, Loader=yaml.Loader)
-
-        # TODO: validate YAML
-        export = CanvasExport(title=test["title"], description=test["description"])
-
-        def elaborate_group(questions_data):
-            for question_data in questions_data:
-                match question_data:
-                    case {"group": _, "questions": _}:
-                        raise ValueError("Canvas does not allow groups in groups.")
-                    case {"name": name, "params": params}:
-                        question = bank.find(f"@{name}")
-                        variant = question.variant(**params)
-                        yield variant
-                    case str() as name:
-                        question = bank.find(f"@{name}")
-                        if isinstance(question, QuestionGroup):
-                            raise ValueError("Canvas does not allow groups in groups.")
-                        yield bank.find(f"@{name}")
-
-        for question_data in test["questions"]:
-            match question_data:
-                case {"group": group, "questions": questions}:
-                    export.add_group(QuestionGroup(group, list(elaborate_group(questions))))
-
-                case {"name": name, "params": params}:
-                    question = bank.find(f"@{name}")
-                    variant = question.variant(**params)
-                    export.add_question(variant)
-
-                case str() as name:
-                    question = bank.find(f"@{name}")
-                    if isinstance(question, type) and issubclass(question, TestQuestion):
-                        export.add_question(question)
-                    elif isinstance(question, QuestionGroup):
-                        export.add_group(question)
-
-                case _:
-                    raise ValueError(f"I don't understand this: {question_data}")
-
-        return export
+    def set_description(self, description):
+        """Set the quiz instructions. Visible before students open the test."""
+        self._quiz_meta.description = md_to_canvas_html(description)
 
     def add_file(self, name: str):
         """Add a file path to the uploaded media."""
@@ -249,7 +210,7 @@ class CanvasExport:
         logging.info(f"Adding question: {group}")
         self._quiz.questions.append(
             Section(
-                title="Group",
+                title=group.__name__,
                 items=[
                     EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
                     for question in group

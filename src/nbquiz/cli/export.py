@@ -18,7 +18,7 @@ def add_args(parser):
 def main(args):
     bank.load()
     logging.info(f"Loading test file: {args.testyaml}")
-    with open(args.testyaml) as fh:
-        e = CanvasExport.from_yaml(fh)
+    c = CanvasExport()
+    c.load_file(args.testyaml)
     logging.info(f"Writing {args.output}")
-    e.write(args.output)
+    c.write(args.output)
