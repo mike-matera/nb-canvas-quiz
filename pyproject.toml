@@ -3,7 +3,7 @@ name = "nbquiz"
 authors = [
     {name = "Mike Matera", email = "michael.matera@cabrillo.edu"},
 ]
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">= 3.10"
 dependencies = [
     "nbtest@git+https://github.com/mike-matera/nbtest.git#egg=main",

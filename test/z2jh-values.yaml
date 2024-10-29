@@ -17,4 +17,4 @@ singleuser:
       "imagePullPolicy": "Always"
       "env":
         - "name": "NBQUIZ_TESTBANKS"
-          "value": "https://github.com/mike-matera/nbquiz/blob/main/examples/testbanks/testbank.zip"
+          "value": "https://github.com/mike-matera/nbquiz/raw/refs/heads/main/examples/testbanks/testbank.zip"

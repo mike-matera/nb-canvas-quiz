@@ -220,9 +220,11 @@ class FunctionQuestion(TestQuestion):
                 self.solution_cell.functions[self.name].arguments
             ), f"""The function {self.name} has the wrong number of arguments."""
             for i, arg in enumerate(argnames):
-                assert (
-                    arg == self.solution_cell.functions[self.name].arguments[i]
-                ), f"""The argument "{self.solution_cell.functions[self.name].arguments[i]}" is misspelled or in the wrong place."""
+                funcarg = self.solution_cell.functions[self.name].arguments[i]
+                if not funcarg.startswith("_") and not funcarg.endswith("_"):
+                    assert (
+                        arg == funcarg
+                    ), f"""The argument "{funcarg}" is misspelled or in the wrong place."""
 
         inner_function = self.solution
 
