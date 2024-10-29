@@ -12,6 +12,7 @@ package.
 
 from abc import ABC
 from importlib.resources import files
+from pathlib import Path
 
 import yamale
 
@@ -26,13 +27,14 @@ class Quiz(ABC):
 
     def load_file(self, filename: str):
         """Load a YAML quiz description from a file."""
-        self._load(yamale.make_data(path=filename))
+        p = Path(filename)
+        self._load(yamale.make_data(path=p), p.parent.absolute())
 
     def load_str(self, yaml: str):
         """Load a YAML quiz description from a string."""
-        self._load(yamale.make_data(content=yaml))
+        self._load(yamale.make_data(content=yaml), Path(".").absolute())
 
-    def _load(self, data):
+    def _load(self, data, relpath):
         schema = yamale.make_schema(
             content=files("nbquiz.resources").joinpath("quiz_schema.yaml").read_text()
         )
@@ -44,6 +46,15 @@ class Quiz(ABC):
 
         self.set_title(data["title"])
         self.set_description(data["description"])
+
+        # Load referenced testbanks
+        if "testbanks" in data:
+            for p in data["testbanks"]:
+                path = Path(p)
+                if not path.is_absolute():
+                    path = relpath / path
+                bank.add_path(path)
+        bank.load()
 
         def elaborate_group(questions_data):
             for question_data in questions_data:

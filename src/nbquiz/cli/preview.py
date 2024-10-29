@@ -9,7 +9,6 @@ from myst_parser.docutils_ import Parser
 
 from nbquiz.canvas.html import MYST_EXTENSIONS, md_to_canvas_html
 from nbquiz.quiz import Quiz
-from nbquiz.testbank import bank
 
 logging.basicConfig(level=logging.INFO)
 
@@ -46,9 +45,10 @@ class Preview(Quiz):
         self._count += 1
 
     def write(self, html, pretty):
+        content = "\n\n".join([c for c in self._content])
         source = f"""# {self._title}
 {self._description}
-{"\n\n".join([c for c in self._content])}
+{content}
 """
         if pretty:
             output = publish_string(
@@ -82,7 +82,6 @@ def add_args(parser):
 
 
 def main(args):
-    bank.load()
     logging.info(f"Loading test file: {args.testyaml}")
     c = Preview()
     c.load_file(args.testyaml)
