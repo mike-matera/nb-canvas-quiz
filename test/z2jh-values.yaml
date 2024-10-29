@@ -1,0 +1,27 @@
+hub:
+  config:
+    Authenticator:
+      admin_users:
+        - test
+      allowed_users:
+        - test
+    DummyAuthenticator:
+      password: test
+    JupyterHub:
+      authenticator_class: dummy
+
+singleuser:
+  extraContainers:
+    - "name": "nbquiz-server"
+      "image": "ghcr.io/mike-matera/nbquiz:sha-98f27df"
+      "command": [ "/bin/sh", "-c", "nbquiz -t /testbanks/testbank.zip server" ]
+      volumeMounts:
+      - name: testbank
+        mountPath: "/testbanks"
+        readOnly: true
+  storage:
+    extraVolumes:
+      - name: testbank
+        secret:
+          secretName: testbank
+          optional: true
