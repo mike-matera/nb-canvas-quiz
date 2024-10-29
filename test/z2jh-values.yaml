@@ -13,7 +13,7 @@ hub:
 singleuser:
   extraContainers:
     - "name": "nbquiz-server"
-      "image": "ghcr.io/mike-matera/nbquiz:sha-98f27df"
+      "image": "ghcr.io/mike-matera/nbquiz:main"
       "command": [ "/bin/sh", "-c", "nbquiz -t /testbanks/testbank.zip server" ]
       volumeMounts:
       - name: testbank
