@@ -18,6 +18,7 @@ dependencies = [
     "minify_html",
     "pyyaml",
     "yamale",
+    "requests",
 ]
 
 [tool.setuptools.package-data]
