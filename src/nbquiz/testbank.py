@@ -146,5 +146,5 @@ class _TestBank:
 bank = _TestBank()
 
 if "NBQUIZ_TESTBANKS" in os.environ:
-    for path in os.environ.get("NBQUIZ_TESTBANKS").split(":"):
+    for path in os.environ.get("NBQUIZ_TESTBANKS").split(","):
         bank.add_path(path)
