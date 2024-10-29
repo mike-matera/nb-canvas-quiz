@@ -3,6 +3,7 @@ Interface for a group of test banks.
 """
 
 import logging
+import os
 import zipfile
 from pathlib import Path
 from typing import Iterable, Union
@@ -118,3 +119,6 @@ class _TestBank:
 
 # Global singleton
 bank = _TestBank()
+
+for path in os.environ.get("NBQUIZ_TESTBANKS", "").split(":"):
+    bank.add_path(path)
