@@ -6,4 +6,5 @@ WORKDIR /app
 RUN pip install . 
 
 ENV PORT=32453
-CMD nbquiz -t /testbanks server 
+ENV NBQUIZ_TESTBANKS=/testbank/testbank.zip
+CMD nbquiz server 
