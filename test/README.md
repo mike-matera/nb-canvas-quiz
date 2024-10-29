@@ -1,20 +1,11 @@
 # Testing the Checker Server 
 
-This directory has configuration to launch z2jh on Minikube. 
+This directory has configuration to launch z2jh on Minikube. The configuration in `z2jh-values.yaml` is
+configured to use the example test banks on GitHub. 
 
 1. Start `minikube`:
     ```
     minikube start
-    ```
-
-1. Zip up a test bank:
-    ```
-    zip testbank.zip ../examples/testbanks/example.ipynb
-    ```
-
-1. Create a Kubernetes secret with the test bank:
-    ```
-    kubectl create secret generic testbank --from-file=testbank.zip
     ```
 
 1. Install z2jh with `z2jh-values.yaml`
@@ -27,4 +18,45 @@ This directory has configuration to launch z2jh on Minikube.
 1. Start a tunnel so you can access Jupyter Hub
     ```
     minikube tunnel  
+    ```
+
+## Use Local Testbanks 
+
+You can update the system to use your own test banks that are loaded into 
+Kubernetes using a Secret resource.
+
+1. First update the `singleuser` configuration to mount a secret:
+    ```yaml
+    singleuser:
+    extraContainers:
+        - "name": "nbquiz-server"
+        "image": "ghcr.io/mike-matera/nbquiz:main"
+        "env":
+            - "name": "NBQUIZ_TESTBANKS"
+            "value": "/testbank"
+        volumeMounts:
+        - name: testbank
+            mountPath: "/testbank"
+            readOnly: true
+    storage:
+        extraVolumes:
+        - name: testbank
+            secret:
+            secretName: testbank
+            optional: true
+    ```
+
+1. Zip up a test bank:
+    ```
+    zip testbank.zip /path/to/your/testbanks/*.ipynb
+    ```
+
+1. Create a Kubernetes secret with the test bank:
+    ```
+    kubectl create secret generic testbank --from-file=testbank.zip
+    ```
+
+1. Upgrade z2jh to use your test banks: 
+    ```
+    helm upgrade jhub jupyterhub/jupyterhub --values z2jh-values.yaml
     ```
