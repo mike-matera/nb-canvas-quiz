@@ -20,6 +20,18 @@ configured to use the example test banks on GitHub.
     minikube tunnel  
     ```
 
+## Setup in Jupyter 
+
+The Helm chart uses a default Jupyter image that doesn't have `nbquiz` installed. Before
+you can run a test notebook use the shell to execute: 
+
+```
+pip install git+https://github.com/mike-matera/nbquiz.git
+```
+
+Once `nbquiz` is installed you can drag-and-drop an exam notebook into Jupyter and execute
+it. 
+
 ## Use Local Testbanks 
 
 You can update the system to use your own test banks that are loaded into 
@@ -28,20 +40,20 @@ Kubernetes using a Secret resource.
 1. First update the `singleuser` configuration to mount a secret:
     ```yaml
     singleuser:
-    extraContainers:
+      extraContainers:
         - "name": "nbquiz-server"
-        "image": "ghcr.io/mike-matera/nbquiz:main"
-        "env":
+          "image": "ghcr.io/mike-matera/nbquiz:main"
+          "env":
             - "name": "NBQUIZ_TESTBANKS"
-            "value": "/testbank"
-        volumeMounts:
-        - name: testbank
+              "value": "/testbank/testbank.zip"
+          volumeMounts:
+          - name: testbank
             mountPath: "/testbank"
             readOnly: true
-    storage:
+      storage:
         extraVolumes:
         - name: testbank
-            secret:
+          secret:
             secretName: testbank
             optional: true
     ```
@@ -60,3 +72,12 @@ Kubernetes using a Secret resource.
     ```
     helm upgrade jhub jupyterhub/jupyterhub --values z2jh-values.yaml
     ```
+
+## Setup in Jupyter 
+
+The Helm chart uses a default Jupyter image that doesn't have `nbquiz` installed. Before
+you can run a test notebook use the shell to execute: 
+
+```
+pip install git+https://github.com/mike-matera/nbquiz.git
+```
