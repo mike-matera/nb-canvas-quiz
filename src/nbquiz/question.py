@@ -31,7 +31,8 @@ class _QuestionMeta(type):
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        cls.validate()
+        if cls.__name__ not in cls.abstract_bases:
+            cls.validate()
 
 
 class TestQuestion(TestCase, metaclass=_QuestionMeta):
@@ -45,6 +46,9 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
 
     # Docstring must be present.
     __doc__: str
+
+    # Subclasses should add their name to avoid having the base class validated.
+    abstract_bases: list[str] = ["TestQuestion"]
 
     def __init__(self, tests=()):
         """
@@ -139,13 +143,16 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
         return _template_env.get_template("question_template.md").render(**cls._template_values())
 
     @classmethod
-    def variant(cls, **params):
+    def variant(cls, classname=None, **params):
         """Create a variant of a test question."""
 
         # Generate a derived class name.
-        if not params:
-            raise ValueError("The variant parameters can not be empty.")
-        classname = cls.__name__ + "_" + "_".join([f"{k}:{v}" for k, v in params.items()])
+        if classname is None:
+            if not params:
+                raise ValueError(
+                    "The variant parameters can not be empty when no classname is specified."
+                )
+            classname = cls.__name__ + "_" + "_".join([f"{k}:{v}" for k, v in params.items()])
 
         m = hashlib.sha1()
         m.update(classname.encode("utf-8"))
@@ -166,16 +173,10 @@ class QuestionGroup(UserList):
     to support multiple variations of a test question.
     """
 
-    def __init__(self, name="QuestionGroup", init=None):
+    def __init__(self, name="QuestionGroup", pick=1, init=None):
         self.__name__ = name
+        self.pick = pick
         super().__init__(init)
-
-    ## TODO: What are the functions of this class?
-    ## should the be a union or intersection of components?
-
-    def validate(self):
-        for q in self.data:
-            q.validate()
 
 
 class FunctionQuestion(TestQuestion):
@@ -197,6 +198,9 @@ class FunctionQuestion(TestQuestion):
     # Required: A dictionary of type annotations similar to the ones
     # returned by `inspect.get_annotations()`
     annotations = None
+
+    # I'm abstract
+    abstract_bases = TestQuestion.abstract_bases + ["FunctionQuestion"]
 
     def __init__(self, tests=()):
         super().__init__(tests)
@@ -267,10 +271,6 @@ class FunctionQuestion(TestQuestion):
 
     @classmethod
     def validate(cls):
-        if cls.__name__ == "FunctionQuestion":
-            # Skip validation on the base class.
-            return
-
         assert cls.name is not None, """The `name` attribute is required in a FunctionQuestion."""
         assert hasattr(
             cls, "annotations"
@@ -301,6 +301,9 @@ class CellQuestion(FunctionQuestion):
     Create a cell-based variant of a function question.
     """
 
+    # I'm abstract
+    abstract_bases = FunctionQuestion.abstract_bases + ["CellQuestion"]
+
     def setUp(self):
         # Validate that the cell defines the required variables.
         argnames = [arg for arg in self._resolve_annotations() if arg != "return"]
@@ -323,10 +326,6 @@ class CellQuestion(FunctionQuestion):
 
     @classmethod
     def validate(cls):
-        # Override the symbol name to use the cell-based wrapper.
-        if cls.__name__ == "CellQuestion":
-            # Skip validation on the base class.
-            return
         cls.name = "_cell_wrapper"
         return super().validate()
 
@@ -344,6 +343,9 @@ class ClassQuestion(TestQuestion):
 
         1. The name has been defined as a class.
     """
+
+    # I'm abstract
+    abstract_bases = TestQuestion.abstract_bases + ["ClassQuestion"]
 
     def setUp(self):
         # Validate that the cell defines the required class.

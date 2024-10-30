@@ -72,7 +72,13 @@ class Quiz(ABC):
         for question_data in data["questions"]:
             match question_data:
                 case {"group": group, "questions": questions}:
-                    self.add_group(QuestionGroup(group, list(elaborate_group(questions))))
+                    if "pick" in question_data:
+                        pick = question_data["pick"]
+                    else:
+                        pick = 1
+                    self.add_group(
+                        QuestionGroup(name=group, pick=pick, init=list(elaborate_group(questions)))
+                    )
 
                 case {"name": name, "params": params}:
                     question = bank.find(f"@{name}")

@@ -13,7 +13,7 @@ from urllib.parse import urlparse, urlunparse
 import nbformat
 import requests
 
-from nbquiz.question import CellQuestion, FunctionQuestion, QuestionGroup, TestQuestion
+from nbquiz.question import QuestionGroup, TestQuestion
 
 logging.basicConfig(level=logging.INFO)
 
@@ -92,7 +92,7 @@ class _TestBank:
                 not attr.startswith("_")
                 and isinstance(instance, type)
                 and issubclass(instance, TestQuestion)
-                and instance not in [TestQuestion, FunctionQuestion, CellQuestion]
+                and instance.__name__ not in instance.abstract_bases
             ):
                 logging.info(f"Found question: {instance.cellid()} tag: {instance.celltag()}")
                 instance.validate()

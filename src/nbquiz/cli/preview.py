@@ -38,7 +38,7 @@ class Preview(Quiz):
 
     def add_group(self, group):
         items = {question.cellid(): question.question() for question in group}
-        grouptext = f"## {self._count}. Group `{group.__name__}` with {len(items)} Items \n"
+        grouptext = f"## {self._count}. Group `{group.__name__}` with {len(items)} Items (pick {group.pick})\n"
         for n, item in enumerate(items):
             grouptext += f"\n\n### Option {n+1} `{item}`\n{items[item]}"
         self._content.append(grouptext)

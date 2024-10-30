@@ -10,3 +10,4 @@ variant:
 group:
   group: str()
   questions: list(str(), include('variant'))
+  pick: int(required=False)

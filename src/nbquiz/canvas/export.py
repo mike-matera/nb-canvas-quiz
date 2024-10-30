@@ -76,11 +76,15 @@ class Section(_Chunk):
 
     id: str = field(default_factory=_Chunk._id)
     title: str = ""
+    pick: int = 1
     items: list[_Item] = field(default_factory=list)
 
     def render(self):
         return Section.template.render(
-            id=self.id, title=escape(self.title), items="\n".join([i.render() for i in self.items])
+            id=self.id,
+            title=escape(self.title),
+            pick=self.pick,
+            items="\n".join([i.render() for i in self.items]),
         )
 
 
@@ -207,10 +211,11 @@ class CanvasExport(Quiz):
     def add_group(self, group):
         """Add a question group to the assessment."""
 
-        logging.info(f"Adding question: {group}")
+        logging.info(f"Adding group: {group}")
         self._quiz.questions.append(
             Section(
                 title=group.__name__,
+                pick=group.pick,
                 items=[
                     EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
                     for question in group
