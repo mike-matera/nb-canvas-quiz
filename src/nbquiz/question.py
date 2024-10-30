@@ -13,12 +13,11 @@ import textwrap
 import typing
 from collections import UserList
 from collections.abc import Iterable
-from typing import Callable
+from typing import Callable, get_type_hints
 from unittest import TestCase
 
-from jinja2 import Environment, PackageLoader, select_autoescape
-
 import nbtest
+from jinja2 import Environment, PackageLoader, select_autoescape
 
 _template_env = Environment(
     loader=PackageLoader("nbquiz", package_path="resources"),
@@ -27,7 +26,15 @@ _template_env = Environment(
 )
 
 
-class TestQuestion(TestCase):
+class _QuestionMeta(type):
+    """Metaclass for questions to make validation happen during a test definition."""
+
+    def __init__(cls, name, bases, dct):
+        super().__init__(name, bases, dct)
+        cls.validate()
+
+
+class TestQuestion(TestCase, metaclass=_QuestionMeta):
     """Base class for test questions."""
 
     # These lists are advisory. They can be used for
@@ -46,7 +53,6 @@ class TestQuestion(TestCase):
         traces have meaning for test developers.
         """
         super().__init__(tests)
-        self.validate()
         self.solution_cell = None
 
         doctags = nbtest.tags()
@@ -110,14 +116,14 @@ class TestQuestion(TestCase):
         ), f"""`tokens_forbidden` must be iterable, not a {cls.tokens_forbidden.__class__}"""
         error = None
         try:
-            cls.__doc__.format(**{item: getattr(cls, item) for item in dir(cls)})
+            cls.__doc__.format(**cls._template_values())
         except KeyError as e:
             error = e
         assert not error, f"""The question text references a variable {error} that is not present in the class definition."""
 
     @classmethod
     def _template_values(cls):
-        values = {item: str(getattr(cls, item)) for item in dir(cls)}
+        values = {item: str(getattr(cls, item)) for item in get_type_hints(cls)}
         values.update(
             {
                 "celltag": cls.celltag(),
@@ -130,13 +136,11 @@ class TestQuestion(TestCase):
     @classmethod
     def question(cls):
         """Return the Markdown of a test question."""
-        cls.validate()
         return _template_env.get_template("question_template.md").render(**cls._template_values())
 
     @classmethod
     def variant(cls, **params):
         """Create a variant of a test question."""
-        cls.validate()
 
         # Generate a derived class name.
         if not params:
@@ -254,11 +258,19 @@ class FunctionQuestion(TestQuestion):
                 ), f"""The annotation dictionary references "{m.group(1)}" but the class does not have a matching variable."""
                 formatted[getattr(cls, m.group(1))] = typ
             else:
+                # Check for a missed template value.
+                assert (
+                    an not in dir(cls)
+                ), f"""Annotation argument "{an}" matches a class attribute {an} == "{getattr(cls,an)}". Did you mean "{{{an}}}"?"""
                 formatted[an] = typ
         return formatted
 
     @classmethod
     def validate(cls):
+        if cls.__name__ == "FunctionQuestion":
+            # Skip validation on the base class.
+            return
+
         assert cls.name is not None, """The `name` attribute is required in a FunctionQuestion."""
         assert hasattr(
             cls, "annotations"
@@ -280,7 +292,6 @@ class FunctionQuestion(TestQuestion):
 
     @classmethod
     def question(cls):
-        cls.validate()
         values = cls._template_values()
         return _template_env.get_template("function_question_template.md").render(**values)
 
@@ -313,12 +324,14 @@ class CellQuestion(FunctionQuestion):
     @classmethod
     def validate(cls):
         # Override the symbol name to use the cell-based wrapper.
+        if cls.__name__ == "CellQuestion":
+            # Skip validation on the base class.
+            return
         cls.name = "_cell_wrapper"
         return super().validate()
 
     @classmethod
     def question(cls):
-        cls.validate()
         values = cls._template_values()
         return _template_env.get_template("cell_question_template.md").render(**values)
 
