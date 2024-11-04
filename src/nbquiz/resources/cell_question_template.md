@@ -4,7 +4,7 @@ The cell should define the variables:
 
 {% for key in annotations %}
 {% if key != "return" %}
-  - `{{ key | plain }}` (*`{{ annotations[key].__name__ }}`*)
+  - {{ key | literal }} (*`{{ annotations[key].__name__ }}`*)
 {% endif %}
 {% endfor %}
 

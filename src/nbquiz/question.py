@@ -12,6 +12,7 @@ Support for Notebook test banks.
 
 import ast
 import hashlib
+import os
 import re
 import textwrap
 import typing
@@ -38,17 +39,27 @@ _template_env = Environment(
 )
 
 
-def param_value(input, alt: str = None):
+def plain_filter(input):
     """
     A Jinja filter that enables the selection of parameter representations.
     """
-    # FIXME: Implement representation changes.
     if not isinstance(input, Parameter):
         return input
     return input.value()
 
 
-_template_env.filters["plain"] = param_value
+def literal_filter(input):
+    """
+    A Jinja filter that enables the selection of parameter representations.
+    """
+    if not isinstance(input, Parameter):
+        return f"`{input}`"
+    assert input._type == "literal", """Non literal can't be converted."""
+    return str(input)
+
+
+_template_env.filters["plain"] = plain_filter
+_template_env.filters["literal"] = literal_filter
 
 
 class Parameter(property):
@@ -68,6 +79,7 @@ class Parameter(property):
         attr_str = ""
         if self._attrs is not None:
             attr_str = f"{{{self._attrs}}}"
+
         if self._type == "literal":
             return f"`{self._value}`{attr_str}"
         elif self._type == "span":
@@ -308,7 +320,7 @@ class FunctionQuestion(TestQuestion):
         ), f"""{self.name} is not a function (did you redefine it?)."""
 
         if not self.name.startswith("_"):
-            # Ignore my internal functions.
+            # Subclasses can disable arg name checks of wrappers.
             assert (
                 self.name in self.solution_cell.functions
             ), f"""{self.name} is not a function."""
@@ -325,7 +337,9 @@ class FunctionQuestion(TestQuestion):
             ), f"""The function {self.name} has the wrong number of arguments."""
             for i, arg in enumerate(argnames):
                 funcarg = self.solution_cell.functions[self.name].arguments[i]
-                if not funcarg.startswith("_") and not funcarg.endswith("_"):
+                if os.environ.get("NBQUIZ_STRICT") is not None or (
+                    not funcarg.startswith("_") and not funcarg.endswith("_")
+                ):
                     assert (
                         arg == funcarg
                     ), f"""The argument "{funcarg}" is misspelled or in the wrong place."""
@@ -353,17 +367,18 @@ class FunctionQuestion(TestQuestion):
     @classmethod
     def resolve_annotations(cls):
         """
-        Generate the true annotations dictionary by resolving keys that have the "{parameter}" syntax.
-        This enables the ability to have variations with different parameters names.
+        Generate the true annotations dictionary by resolving keys that have
+        the "{parameter}" syntax. This enables the ability to have variations
+        with different parameter names.
         """
         formatted = {}
         for an, typ in cls.annotations.items():
             if (m := re.match(r"^\s*{\s*(\S+)\s*}\s*$", an)) is not None:
                 pname = m.group(1)
-                pvalue = cls._params[pname].value()
+                pvalue = cls._params[pname]
                 assert isinstance(
-                    pvalue, str
-                ), f"""Parameters that name function arguments must be strings but "{pname}" is an {pvalue.__class__}"""
+                    pvalue.value(), str
+                ), f"""Parameters that name function arguments must be strings but "{pname}" is an {pvalue.value().__class__}"""
                 assert (
                     pname in cls._params
                 ), f"""The annotation dictionary references "{pname}" but the class does not have a matching variable."""

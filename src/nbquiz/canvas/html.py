@@ -54,7 +54,9 @@ class CanvasHTMLTranslator(_html_base.HTMLTranslator):
         style = ""
         if "pia" in node["classes"] and "invisible" in node["classes"]:
             style = "display:inline-block; overflow:hidden; width: 1px; height: 1px"
-        self.body.append(self.starttag(node, "code", style=style, CLASS=""))
+        self.body.append(
+            self.starttag(node, "code", suffix="", style=style, CLASS="")
+        )
 
     def depart_literal(self, node):
         if "pia" in node["classes"] and "invisible" not in node["classes"]:
@@ -64,11 +66,14 @@ class CanvasHTMLTranslator(_html_base.HTMLTranslator):
         self.body.append("</code>")
 
     def visit_inline(self, node):
-        try:
-            cl = node.get("classes")[0]
-            style = self.pygments.get(cl, "")
-        except (IndexError, KeyError):
-            style = ""
+        if "pia" in node["classes"]:
+            style = "display:inline-block; overflow:hidden; width: 1px; height: 1px"
+        else:
+            try:
+                cl = node.get("classes")[0]
+                style = self.pygments.get(cl, "")
+            except (IndexError, KeyError):
+                style = ""
         self.body.append(f"""<span style="{style}">""")
 
     def depart_inline(self, node):
