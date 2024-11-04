@@ -26,12 +26,47 @@ _template_env = Environment(
 )
 
 
+def raw_param(input):
+    if isinstance(input, Parameter):
+        return input.raw()
+    else:
+        return str(input)
+
+
+_template_env.filters["raw"] = raw_param
+
+
+class Parameter(property):
+    """A parameter is a read-only property with representation information."""
+
+    def __init__(self, value, typ="literal", attrs=None):
+        super().__init__(lambda self: value)
+        self._value = value
+        self._type = typ
+        self._attrs = attrs
+
+    def raw(self):
+        return f"{self._value}"
+
+    def __str__(self):
+        """The default representation is a literal."""
+        attr_str = ""
+        if self._attrs is not None:
+            attr_str = f"{{{self._attrs}}}"
+        if self._type == "literal":
+            return f"`{self._value}`{attr_str}"
+        elif self._type == "span":
+            return f"[{self._value}]{attr_str}"
+        else:
+            raise ValueError(f"""type must be "literal" or "span" not {self._type}""")
+
+
 class _QuestionMeta(type):
     """Metaclass for questions to make validation happen during a test definition."""
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        if cls.__name__ not in cls.abstract_bases:
+        if cls.__name__ not in cls._abstract_bases:
             cls.validate()
 
 
@@ -48,7 +83,7 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
     __doc__: str
 
     # Subclasses should add their name to avoid having the base class validated.
-    abstract_bases: list[str] = ["TestQuestion"]
+    _abstract_bases: list[str] = ["TestQuestion"]
 
     def __init__(self, tests=()):
         """
@@ -110,7 +145,8 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
     def validate(cls):
         """
         The validate() method should check any an all class variables for correctness.
-        Failures in validate() will be reported with stack traces in test cells.
+        Failures in validate() will be reported in the cell where a test class is
+        defined.
         """
         assert isinstance(
             cls.tokens_required, Iterable
@@ -118,23 +154,29 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
         assert isinstance(
             cls.tokens_forbidden, Iterable
         ), f"""`tokens_forbidden` must be iterable, not a {cls.tokens_forbidden.__class__}"""
-        error = None
-        try:
-            cls.__doc__.format(**cls._template_values())
-        except KeyError as e:
-            error = e
-        assert not error, f"""The question text references a variable {error} that is not present in the class definition."""
+
+        # Look for question parameters
+        params = {
+            attr: getattr(cls, attr) for attr in get_type_hints(cls) if not attr.startswith("_")
+        }
+        cls._param_types = []
+        for p, v in params.items():
+            if isinstance(v, Parameter):
+                pass
+            else:
+                setattr(cls, p, Parameter(v))
 
     @classmethod
     def _template_values(cls):
-        values = {item: str(getattr(cls, item)) for item in get_type_hints(cls)}
+        values = {item: getattr(cls, item) for item in get_type_hints(cls)}
         values.update(
             {
                 "celltag": cls.celltag(),
                 "cellid": cls.cellid(),
             }
         )
-        values["question"] = textwrap.dedent(cls.__doc__).strip().format(**values)
+        temp = _template_env.from_string(textwrap.dedent(cls.__doc__).strip())
+        values["question"] = temp.render(**values)
         return values
 
     @classmethod
@@ -200,7 +242,7 @@ class FunctionQuestion(TestQuestion):
     annotations = None
 
     # I'm abstract
-    abstract_bases = TestQuestion.abstract_bases + ["FunctionQuestion"]
+    _abstract_bases = TestQuestion._abstract_bases + ["FunctionQuestion"]
 
     def __init__(self, tests=()):
         super().__init__(tests)
@@ -231,7 +273,7 @@ class FunctionQuestion(TestQuestion):
                 funcarg = self.solution_cell.functions[self.name].arguments[i]
                 if not funcarg.startswith("_") and not funcarg.endswith("_"):
                     assert (
-                        arg == funcarg
+                        arg.raw() == funcarg
                     ), f"""The argument "{funcarg}" is misspelled or in the wrong place."""
 
         inner_function = self.solution
@@ -302,7 +344,7 @@ class CellQuestion(FunctionQuestion):
     """
 
     # I'm abstract
-    abstract_bases = FunctionQuestion.abstract_bases + ["CellQuestion"]
+    _abstract_bases = FunctionQuestion._abstract_bases + ["CellQuestion"]
 
     def setUp(self):
         # Validate that the cell defines the required variables.
@@ -345,7 +387,7 @@ class ClassQuestion(TestQuestion):
     """
 
     # I'm abstract
-    abstract_bases = TestQuestion.abstract_bases + ["ClassQuestion"]
+    _abstract_bases = TestQuestion._abstract_bases + ["ClassQuestion"]
 
     def setUp(self):
         # Validate that the cell defines the required class.
