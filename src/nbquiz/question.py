@@ -329,7 +329,9 @@ class FunctionQuestion(TestQuestion):
             ), f"""The function {self.name} has no docstring."""
 
             argnames = [
-                arg for arg in self.resolve_annotations() if arg != "return"
+                arg.value() if isinstance(arg, Parameter) else arg
+                for arg in self.resolve_annotations()
+                if arg != "return"
             ]
             assert (
                 len(argnames)
