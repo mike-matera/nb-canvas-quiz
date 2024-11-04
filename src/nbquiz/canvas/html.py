@@ -64,8 +64,11 @@ class CanvasHTMLTranslator(_html_base.HTMLTranslator):
         self.body.append("</code>")
 
     def visit_inline(self, node):
-        cl = node.get("classes")[0]
-        style = self.pygments.get(cl, "")
+        try:
+            cl = node.get("classes")[0]
+            style = self.pygments.get(cl, "")
+        except (IndexError, KeyError):
+            style = ""
         self.body.append(f"""<span style="{style}">""")
 
     def depart_inline(self, node):
@@ -111,7 +114,9 @@ def md_to_canvas_html(source):
         source=source,
         writer=CanvasHTMLWriter(),
         settings_overrides={
-            "template": files("nbquiz.resources").joinpath("canvas_html_template.txt").read_text(),
+            "template": files("nbquiz.resources")
+            .joinpath("canvas_html_template.txt")
+            .read_text(),
             "myst_enable_extensions": MYST_EXTENSIONS,
             "embed_stylesheet": False,
             "stylesheet_dirs": [],

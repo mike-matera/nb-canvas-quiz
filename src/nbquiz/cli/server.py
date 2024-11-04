@@ -15,7 +15,11 @@ from ..runtime.server import Checker, checker_pb2_grpc
 
 def add_args(parser: ArgumentParser):
     parser.add_argument(
-        "-p", "--port", type=int, default=32222, help="Run the service on this port number"
+        "-p",
+        "--port",
+        type=int,
+        default=32222,
+        help="Run the service on this port number",
     )
     parser.add_argument(
         "-n",

@@ -29,7 +29,9 @@ parser.add_argument(
 
 subparsers = parser.add_subparsers(help="subcommand help", required=True)
 for command in subcommands:
-    subparser = subparsers.add_parser(command, help=subcommands[command].__doc__)
+    subparser = subparsers.add_parser(
+        command, help=subcommands[command].__doc__
+    )
     subcommands[command].add_args(subparser)
     subparser.set_defaults(func=subcommands[command].main)
 

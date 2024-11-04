@@ -54,13 +54,17 @@ class _TestBank:
         logging.info(f"Fetching URL: {urlunparse(url)}")
         response = requests.get(urlunparse(url))
         if response.status_code != 200:
-            raise ValueError(f"Error fetching url: {urlunparse(url)}: {response.status_code}")
+            raise ValueError(
+                f"Error fetching url: {urlunparse(url)}: {response.status_code}"
+            )
         if response.headers["content-type"] == "application/zip":
             self._load_zip(io.BytesIO(response.content))
         elif response.headers["content-type"] == "application/octet-stream":
             self._loads(response.content)
         else:
-            raise ValueError(f"The url {urlunparse(url)} points to something I don't understand.")
+            raise ValueError(
+                f"The url {urlunparse(url)} points to something I don't understand."
+            )
 
     def _load_zip(self, p):
         """Load test banks from a zip file."""
@@ -94,7 +98,9 @@ class _TestBank:
                 and issubclass(instance, TestQuestion)
                 and instance.__name__ not in instance.abstract_bases
             ):
-                logging.info(f"Found question: {instance.cellid()} tag: {instance.celltag()}")
+                logging.info(
+                    f"Found question: {instance.cellid()} tag: {instance.celltag()}"
+                )
                 instance.validate()
                 self._questions[instance.celltag()] = instance
                 self._questions[instance.cellid()] = instance
@@ -103,7 +109,9 @@ class _TestBank:
                 logging.info(f"Found question group: @{attr}")
                 self._questions[f"@{attr}"] = instance
                 for question in instance:
-                    logging.info(f"  Group question: {question.cellid()} tag: {question.celltag()}")
+                    logging.info(
+                        f"  Group question: {question.cellid()} tag: {question.celltag()}"
+                    )
                     question.validate()
                     self._questions[question.celltag()] = question
                     self._questions[question.cellid()] = question
@@ -119,7 +127,9 @@ class _TestBank:
 
     def match(self, tags: Iterable[str]) -> TestQuestion:
         """Match a list of tags to the testbank, return a list of all matching tests."""
-        questions = [self._questions[tag] for tag in tags if tag in self._questions]
+        questions = [
+            self._questions[tag] for tag in tags if tag in self._questions
+        ]
         if not questions:
             raise ValueError(
                 f"""I can't find a test for any of the tags: {", ".join(tags)}. Did you add the tag from the question?"""

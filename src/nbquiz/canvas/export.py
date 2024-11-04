@@ -136,7 +136,9 @@ class AssessmentResource(_Chunk):
     assessment_id: str = None  # Joins with id in Assessment
 
     def render(self):
-        return AssessmentResource.template.render(id=self.id, assessment_id=self.assessment_id)
+        return AssessmentResource.template.render(
+            id=self.id, assessment_id=self.assessment_id
+        )
 
 
 @dataclass
@@ -149,7 +151,9 @@ class FileResource(_Chunk):
     filename: str = None  # assumed to b in "web_resources/Uploaded Media/"
 
     def render(self):
-        return FileResource.template.render(id=self.id, filename=escape(self.filename))
+        return FileResource.template.render(
+            id=self.id, filename=escape(self.filename)
+        )
 
 
 @dataclass
@@ -159,17 +163,21 @@ class Manifest(_Chunk):
     template = jinja.get_template("imsmanifest.xml")
 
     id: str = field(default_factory=_Chunk._id)
-    resources: list[Union[FileResource | AssessmentResource]] = field(default_factory=list)
+    resources: list[Union[FileResource | AssessmentResource]] = field(
+        default_factory=list
+    )
 
     def render(self):
         return Manifest.template.render(
-            id=self.id, resources="\n".join([i.render() for i in self.resources])
+            id=self.id,
+            resources="\n".join([i.render() for i in self.resources]),
         )
 
 
 class CanvasExport(Quiz):
     """
-    An API to construct an export package containing one quiz and arbitrary files.
+    An API to construct an export package containing one quiz and arbitrary
+    files.
     """
 
     def __init__(self):
@@ -177,7 +185,9 @@ class CanvasExport(Quiz):
 
         self._quiz = Assessment(title="Quiz", questions=[])
         self._quiz_meta = AssessmentMeta(
-            assessment_id=self._quiz.id, title="Quiz", description="Description"
+            assessment_id=self._quiz.id,
+            title="Quiz",
+            description="Description",
         )
         self._quiz_res = AssessmentResource(assessment_id=self._quiz.id)
         self._manifest = Manifest(resources=[self._quiz_res])
@@ -205,7 +215,10 @@ class CanvasExport(Quiz):
 
         logging.info(f"Adding question: {question}")
         self._quiz.questions.append(
-            EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
+            EssayItem(
+                title=question.__name__,
+                html=md_to_canvas_html(question.question()),
+            )
         )
 
     def add_group(self, group):
@@ -217,7 +230,10 @@ class CanvasExport(Quiz):
                 title=group.__name__,
                 pick=group.pick,
                 items=[
-                    EssayItem(title=question.__name__, html=md_to_canvas_html(question.question()))
+                    EssayItem(
+                        title=question.__name__,
+                        html=md_to_canvas_html(question.question()),
+                    )
                     for question in group
                 ],
             )
@@ -279,23 +295,42 @@ nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i+1})]
 
             # Finalize and write any additional file resources.
             for file in self._files:
-                self._manifest.resources.append(FileResource(filename=file.name))
-                zf.write(arcname=f"web_resources/Uploaded Media/{file.name}", file=file)
-                self._quiz_meta.description += f"<li>{file_link(file.name)}</li>"
+                self._manifest.resources.append(
+                    FileResource(filename=file.name)
+                )
+                zf.write(
+                    arcname=f"web_resources/Uploaded Media/{file.name}",
+                    file=file,
+                )
+                self._quiz_meta.description += (
+                    f"<li>{file_link(file.name)}</li>"
+                )
 
             # Add the test file to the manifest.
             nbfilename = f"{self._quiz_meta.title}.ipynb"
             self._manifest.resources.append(FileResource(filename=nbfilename))
-            zf.writestr(f"web_resources/Uploaded Media/{nbfilename}", data=nbformat.writes(nb))
-            self._quiz_meta.description += f"<li>{file_link(nbfilename)}</li></ul></p>"
+            zf.writestr(
+                f"web_resources/Uploaded Media/{nbfilename}",
+                data=nbformat.writes(nb),
+            )
+            self._quiz_meta.description += (
+                f"<li>{file_link(nbfilename)}</li></ul></p>"
+            )
 
             # Finalize the test with the file upload question
             self._quiz.questions.append(
-                FileItem(title="Upload", html="""Upload your Jupyter notebook""")
+                FileItem(
+                    title="Upload", html="""Upload your Jupyter notebook"""
+                )
             )
 
             # Write out the rest of the resources.
             zf.writestr("imsmanifest.xml", self._manifest.render())
-            zf.writestr(f"{self._quiz.id}/{self._quiz.id}.xml", self._quiz.render())
-            zf.writestr(f"{self._quiz.id}/assessment_meta.xml", self._quiz_meta.render())
+            zf.writestr(
+                f"{self._quiz.id}/{self._quiz.id}.xml", self._quiz.render()
+            )
+            zf.writestr(
+                f"{self._quiz.id}/assessment_meta.xml",
+                self._quiz_meta.render(),
+            )
             zf.writestr("non_cc_assessments/", "")

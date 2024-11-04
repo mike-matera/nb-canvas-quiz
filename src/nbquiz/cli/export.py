@@ -11,8 +11,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 def add_args(parser):
-    parser.add_argument("testyaml", help="A YAML file containing a description of a test.")
-    parser.add_argument("output", help="A ZIP file that will have the Canvas export package.")
+    parser.add_argument(
+        "testyaml", help="A YAML file containing a description of a test."
+    )
+    parser.add_argument(
+        "output", help="A ZIP file that will have the Canvas export package."
+    )
 
 
 def main(args):

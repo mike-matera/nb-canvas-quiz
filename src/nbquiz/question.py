@@ -6,6 +6,10 @@ Support for Notebook test banks.
 ##     similarly need only support a single level of hierarchy.
 ## TODO: Document the question format.
 
+## FIXME: When accessing a parameter with `ClassName.param` you seem to get
+## the Parameter instance. When accessing with `self.param` you seem to get
+## the value as expected. Figure this out.
+
 import ast
 import hashlib
 import re
@@ -16,24 +20,35 @@ from collections.abc import Iterable
 from typing import Callable, get_type_hints
 from unittest import TestCase
 
+from jinja2 import (
+    Environment,
+    PackageLoader,
+    StrictUndefined,
+    UndefinedError,
+    select_autoescape,
+)
+
 import nbtest
-from jinja2 import Environment, PackageLoader, select_autoescape
 
 _template_env = Environment(
     loader=PackageLoader("nbquiz", package_path="resources"),
     autoescape=select_autoescape(),
     trim_blocks=True,
+    undefined=StrictUndefined,
 )
 
 
-def raw_param(input):
-    if isinstance(input, Parameter):
-        return input.raw()
-    else:
-        return str(input)
+def param_value(input, alt: str = None):
+    """
+    A Jinja filter that enables the selection of parameter representations.
+    """
+    # FIXME: Implement representation changes.
+    if not isinstance(input, Parameter):
+        return input
+    return input.value()
 
 
-_template_env.filters["raw"] = raw_param
+_template_env.filters["plain"] = param_value
 
 
 class Parameter(property):
@@ -45,8 +60,8 @@ class Parameter(property):
         self._type = typ
         self._attrs = attrs
 
-    def raw(self):
-        return f"{self._value}"
+    def value(self):
+        return self._value
 
     def __str__(self):
         """The default representation is a literal."""
@@ -58,19 +73,22 @@ class Parameter(property):
         elif self._type == "span":
             return f"[{self._value}]{attr_str}"
         else:
-            raise ValueError(f"""type must be "literal" or "span" not {self._type}""")
+            raise ValueError(
+                f"""type must be "literal" or "span" not {self._type}"""
+            )
 
 
-class _QuestionMeta(type):
+class _QuestionValidator(type):
     """Metaclass for questions to make validation happen during a test definition."""
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        if cls.__name__ not in cls._abstract_bases:
+        if cls.__name__ not in cls.abstract_bases:
+            # Only validate if this is not an ABC
             cls.validate()
 
 
-class TestQuestion(TestCase, metaclass=_QuestionMeta):
+class TestQuestion(TestCase, metaclass=_QuestionValidator):
     """Base class for test questions."""
 
     # These lists are advisory. They can be used for
@@ -83,7 +101,7 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
     __doc__: str
 
     # Subclasses should add their name to avoid having the base class validated.
-    _abstract_bases: list[str] = ["TestQuestion"]
+    abstract_bases: list[str] = ["TestQuestion"]
 
     def __init__(self, tests=()):
         """
@@ -103,7 +121,9 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
         elif nametag in doctags:
             self.solution_cell = nbtest.get(nametag)
         else:
-            self.fail(f"I can't find a solution with the tag {self.celltag()}.")
+            self.fail(
+                f"I can't find a solution with the tag {self.celltag()}."
+            )
 
     def setUp(self) -> None:
         """
@@ -111,7 +131,9 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
         contains the TagCacheEntry with the solution inside.
         """
 
-        alltokens = set((t.__class__ for t in ast.walk(self.solution_cell.tree)))
+        alltokens = set(
+            (t.__class__ for t in ast.walk(self.solution_cell.tree))
+        )
 
         assert all(
             {token in alltokens for token in self.tokens_required}
@@ -133,7 +155,9 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
 
     @classmethod
     def celltag(cls):
-        """Produce a unique, opaque identifier for this test question."""
+        """
+        Produce a unique, opaque identifier for this test question.
+        """
         m = hashlib.sha1()
         prefix = cls.__name__[0].lower() + "".join(
             [ll.lower() for ll in cls.__name__[1:] if ll.isupper()]
@@ -155,26 +179,43 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
             cls.tokens_forbidden, Iterable
         ), f"""`tokens_forbidden` must be iterable, not a {cls.tokens_forbidden.__class__}"""
 
-        # Look for question parameters
-        params = {
-            attr: getattr(cls, attr) for attr in get_type_hints(cls) if not attr.startswith("_")
-        }
-        cls._param_types = []
-        for p, v in params.items():
-            if isinstance(v, Parameter):
-                pass
-            else:
-                setattr(cls, p, Parameter(v))
+        # Generate the _params dictionary
+        cls._params = {}
+        for attr in get_type_hints(cls):
+            if not attr.startswith("_") and attr != "abstract_bases":
+                value = getattr(cls, attr)
+                if not isinstance(value, Parameter):
+                    # Wrap plain-value parameters
+                    p = Parameter(value)
+                    setattr(cls, attr, p)
+                    cls._params[attr] = p
+                else:
+                    cls._params[attr] = value
+
+        # Test-render the question to make sure all template values are present
+        try:
+            cls.question()
+        except UndefinedError as e:
+            raise ValueError(f"The template value {e}. Check your parameters.")
 
     @classmethod
-    def _template_values(cls):
-        values = {item: getattr(cls, item) for item in get_type_hints(cls)}
-        values.update(
-            {
-                "celltag": cls.celltag(),
-                "cellid": cls.cellid(),
-            }
-        )
+    def template_values(cls):
+        """
+        Generate a dictionary of values to be passed in to the question rendering template.
+        The following key/value pairs will be present:
+
+            - param: value -- All parameters named by the question and their values
+            - "celltag": value -- The result of celltag()
+            - "cellid": value -- The result of cellid()
+            - "question": value -- The rendered question text
+
+        Subclasses should override this to add or change parameters as needed.
+        """
+        values = {
+            "celltag": cls.celltag(),
+            "cellid": cls.cellid(),
+        }
+        values.update(cls._params)
         temp = _template_env.from_string(textwrap.dedent(cls.__doc__).strip())
         values["question"] = temp.render(**values)
         return values
@@ -182,7 +223,9 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
     @classmethod
     def question(cls):
         """Return the Markdown of a test question."""
-        return _template_env.get_template("question_template.md").render(**cls._template_values())
+        return _template_env.get_template("question_template.md").render(
+            **cls.template_values()
+        )
 
     @classmethod
     def variant(cls, classname=None, **params):
@@ -194,7 +237,11 @@ class TestQuestion(TestCase, metaclass=_QuestionMeta):
                 raise ValueError(
                     "The variant parameters can not be empty when no classname is specified."
                 )
-            classname = cls.__name__ + "_" + "_".join([f"{k}:{v}" for k, v in params.items()])
+            classname = (
+                cls.__name__
+                + "_"
+                + "_".join([f"{k}:{v}" for k, v in params.items()])
+            )
 
         m = hashlib.sha1()
         m.update(classname.encode("utf-8"))
@@ -242,7 +289,7 @@ class FunctionQuestion(TestQuestion):
     annotations = None
 
     # I'm abstract
-    _abstract_bases = TestQuestion._abstract_bases + ["FunctionQuestion"]
+    abstract_bases = TestQuestion.abstract_bases + ["FunctionQuestion"]
 
     def __init__(self, tests=()):
         super().__init__(tests)
@@ -251,7 +298,9 @@ class FunctionQuestion(TestQuestion):
     def setUp(self):
         super().setUp()
 
-        assert self.name in self.solution_cell.ns, f"""{self.name} is not defined."""
+        assert (
+            self.name in self.solution_cell.ns
+        ), f"""{self.name} is not defined."""
         self.solution = self.solution_cell.ns[self.name]
 
         assert isinstance(
@@ -260,20 +309,25 @@ class FunctionQuestion(TestQuestion):
 
         if not self.name.startswith("_"):
             # Ignore my internal functions.
-            assert self.name in self.solution_cell.functions, f"""{self.name} is not a function."""
+            assert (
+                self.name in self.solution_cell.functions
+            ), f"""{self.name} is not a function."""
             assert (
                 self.solution_cell.functions[self.name].docstring is not None
             ), f"""The function {self.name} has no docstring."""
 
-            argnames = [arg for arg in self._resolve_annotations() if arg != "return"]
-            assert len(argnames) == len(
-                self.solution_cell.functions[self.name].arguments
+            argnames = [
+                arg for arg in self.resolve_annotations() if arg != "return"
+            ]
+            assert (
+                len(argnames)
+                == len(self.solution_cell.functions[self.name].arguments)
             ), f"""The function {self.name} has the wrong number of arguments."""
             for i, arg in enumerate(argnames):
                 funcarg = self.solution_cell.functions[self.name].arguments[i]
                 if not funcarg.startswith("_") and not funcarg.endswith("_"):
                     assert (
-                        arg.raw() == funcarg
+                        arg == funcarg
                     ), f"""The argument "{funcarg}" is misspelled or in the wrong place."""
 
         inner_function = self.solution
@@ -281,7 +335,9 @@ class FunctionQuestion(TestQuestion):
         def _wrapper(*args, **kwargs):
             rval = inner_function(*args, **kwargs)
             if self.annotations["return"] is None:
-                assert rval is None, f"""The function {self.name} returned {rval} instead of None"""
+                assert (
+                    rval is None
+                ), f"""The function {self.name} returned {rval} instead of None"""
             elif self.annotations["return"] is typing.Any:
                 pass
             else:
@@ -295,25 +351,44 @@ class FunctionQuestion(TestQuestion):
         self.solution = _wrapper
 
     @classmethod
-    def _resolve_annotations(cls):
+    def resolve_annotations(cls):
+        """
+        Generate the true annotations dictionary by resolving keys that have the "{parameter}" syntax.
+        This enables the ability to have variations with different parameters names.
+        """
         formatted = {}
         for an, typ in cls.annotations.items():
             if (m := re.match(r"^\s*{\s*(\S+)\s*}\s*$", an)) is not None:
-                assert hasattr(
-                    cls, m.group(1)
-                ), f"""The annotation dictionary references "{m.group(1)}" but the class does not have a matching variable."""
-                formatted[getattr(cls, m.group(1))] = typ
+                pname = m.group(1)
+                pvalue = cls._params[pname].value()
+                assert isinstance(
+                    pvalue, str
+                ), f"""Parameters that name function arguments must be strings but "{pname}" is an {pvalue.__class__}"""
+                assert (
+                    pname in cls._params
+                ), f"""The annotation dictionary references "{pname}" but the class does not have a matching variable."""
+                formatted[pvalue] = typ
             else:
                 # Check for a missed template value.
                 assert (
-                    an not in dir(cls)
+                    an not in cls._params
                 ), f"""Annotation argument "{an}" matches a class attribute {an} == "{getattr(cls,an)}". Did you mean "{{{an}}}"?"""
                 formatted[an] = typ
+
         return formatted
 
     @classmethod
+    def template_values(cls):
+        values = super().template_values()
+        values["annotations"] = cls.resolve_annotations()
+        return values
+
+    @classmethod
     def validate(cls):
-        assert cls.name is not None, """The `name` attribute is required in a FunctionQuestion."""
+        super().validate()
+        assert (
+            cls.name is not None
+        ), """The `name` attribute is required in a FunctionQuestion."""
         assert hasattr(
             cls, "annotations"
         ), """The attribute `annotations` is required in a FunctionQuestion"""
@@ -323,19 +398,14 @@ class FunctionQuestion(TestQuestion):
         assert (
             "return" in cls.annotations
         ), """The `annotations` dictionary must contain the "return" key."""
-        cls._resolve_annotations()
-        return super().validate()
-
-    @classmethod
-    def _template_values(cls):
-        values = super()._template_values()
-        values["annotations"] = cls._resolve_annotations()
-        return values
+        cls.resolve_annotations()
 
     @classmethod
     def question(cls):
-        values = cls._template_values()
-        return _template_env.get_template("function_question_template.md").render(**values)
+        values = cls.template_values()
+        return _template_env.get_template(
+            "function_question_template.md"
+        ).render(**values)
 
 
 class CellQuestion(FunctionQuestion):
@@ -344,11 +414,13 @@ class CellQuestion(FunctionQuestion):
     """
 
     # I'm abstract
-    _abstract_bases = FunctionQuestion._abstract_bases + ["CellQuestion"]
+    abstract_bases = FunctionQuestion.abstract_bases + ["CellQuestion"]
 
     def setUp(self):
         # Validate that the cell defines the required variables.
-        argnames = [arg for arg in self._resolve_annotations() if arg != "return"]
+        argnames = [
+            arg for arg in self.resolve_annotations() if arg != "return"
+        ]
         for name in argnames:
             assert (
                 name in self.solution_cell.assignments
@@ -373,8 +445,10 @@ class CellQuestion(FunctionQuestion):
 
     @classmethod
     def question(cls):
-        values = cls._template_values()
-        return _template_env.get_template("cell_question_template.md").render(**values)
+        values = cls.template_values()
+        return _template_env.get_template("cell_question_template.md").render(
+            **values
+        )
 
 
 class ClassQuestion(TestQuestion):
@@ -387,11 +461,15 @@ class ClassQuestion(TestQuestion):
     """
 
     # I'm abstract
-    _abstract_bases = TestQuestion._abstract_bases + ["ClassQuestion"]
+    abstract_bases = TestQuestion.abstract_bases + ["ClassQuestion"]
 
     def setUp(self):
+        super().setUp()
+
         # Validate that the cell defines the required class.
-        assert self.name in self.solution_cell.ns, f"""{self.name} is not defined."""
+        assert (
+            self.name in self.solution_cell.ns
+        ), f"""{self.name} is not defined."""
         self.solution = self.solution_cell.ns[self.name]
 
         assert isinstance(
@@ -400,9 +478,16 @@ class ClassQuestion(TestQuestion):
 
         if not self.name.startswith("_"):
             # Ignore my internal classes.
-            assert self.name in self.solution_cell.classes, f"""{self.name} is not a class."""
+            assert (
+                self.name in self.solution_cell.classes
+            ), f"""{self.name} is not a class."""
             assert (
                 self.solution_cell.classes[self.name].docstring is not None
             ), f"""The class {self.name} has no docstring."""
-
-        super().setUp()
+            # Ignore my internal classes.
+            assert (
+                self.name in self.solution_cell.classes
+            ), f"""{self.name} is not a class."""
+            assert (
+                self.solution_cell.classes[self.name].docstring is not None
+            ), f"""The class {self.name} has no docstring."""

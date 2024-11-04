@@ -34,7 +34,9 @@ class Checker(checker_pb2_grpc.CheckerServicer):
             stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate(input=request.source.encode("utf-8"))
+        stdout, stderr = await proc.communicate(
+            input=request.source.encode("utf-8")
+        )
         if stderr != "":
             logging.info(stderr)
 
@@ -43,8 +45,14 @@ class Checker(checker_pb2_grpc.CheckerServicer):
         logging.info(f"Request completed in {end-start} seconds.")
 
         if proc.returncode == 0 or 10 <= proc.returncode < 20:
-            return checker_pb2.TestReply(response=stdout.decode("utf-8"), status=proc.returncode)
+            return checker_pb2.TestReply(
+                response=stdout.decode("utf-8"), status=proc.returncode
+            )
         else:
             # Don't give an attacker any information about the failure.
-            logging.error(f"The checker had an internal error: {proc.returncode}: {stdout}")
-            return checker_pb2.TestReply(response="""An unexpected error has ocurred.""", status=1)
+            logging.error(
+                f"The checker had an internal error: {proc.returncode}: {stdout}"
+            )
+            return checker_pb2.TestReply(
+                response="""An unexpected error has ocurred.""", status=1
+            )

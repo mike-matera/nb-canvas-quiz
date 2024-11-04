@@ -2,11 +2,11 @@
 
 Function definition: 
 
-- Name: `{{ name | raw }}`
+- Name: `{{ name | plain }}`
 - Arguments: 
 {% for key in annotations %}
 {% if key != "return" %}
-  - `{{ key | raw }}` (*`{{ annotations[key].__name__ }}`*)
+  - `{{ key | plain }}` (*`{{ annotations[key].__name__ }}`*)
 {% endif %}
 {% endfor %}
 {% if annotations["return"] %}

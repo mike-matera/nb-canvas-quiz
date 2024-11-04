@@ -36,7 +36,9 @@ class Quiz(ABC):
 
     def _load(self, data, relpath):
         schema = yamale.make_schema(
-            content=files("nbquiz.resources").joinpath("quiz_schema.yaml").read_text()
+            content=files("nbquiz.resources")
+            .joinpath("quiz_schema.yaml")
+            .read_text()
         )
         yamale.validate(schema, data)
         data = list(data)
@@ -66,7 +68,9 @@ class Quiz(ABC):
                     case str() as name:
                         question = bank.find(f"@{name}")
                         if isinstance(question, QuestionGroup):
-                            raise ValueError("Canvas does not allow groups in groups.")
+                            raise ValueError(
+                                "Canvas does not allow groups in groups."
+                            )
                         yield bank.find(f"@{name}")
 
         for question_data in data["questions"]:
@@ -77,7 +81,11 @@ class Quiz(ABC):
                     else:
                         pick = 1
                     self.add_group(
-                        QuestionGroup(name=group, pick=pick, init=list(elaborate_group(questions)))
+                        QuestionGroup(
+                            name=group,
+                            pick=pick,
+                            init=list(elaborate_group(questions)),
+                        )
                     )
 
                 case {"name": name, "params": params}:
@@ -87,13 +95,17 @@ class Quiz(ABC):
 
                 case str() as name:
                     question = bank.find(f"@{name}")
-                    if isinstance(question, type) and issubclass(question, TestQuestion):
+                    if isinstance(question, type) and issubclass(
+                        question, TestQuestion
+                    ):
                         self.add_question(question)
                     elif isinstance(question, QuestionGroup):
                         self.add_group(question)
 
                 case _:
-                    raise ValueError(f"I don't understand this: {question_data}")
+                    raise ValueError(
+                        f"I don't understand this: {question_data}"
+                    )
 
     def set_title(self, title: str):
         """Set the title"""

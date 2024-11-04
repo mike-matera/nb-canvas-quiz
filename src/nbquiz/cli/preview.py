@@ -68,9 +68,12 @@ class Preview(Quiz):
 
 
 def add_args(parser):
-    parser.add_argument("testyaml", help="A YAML file containing a description of a test.")
     parser.add_argument(
-        "output", help="An html file that will have a formatted preview of the quiz."
+        "testyaml", help="A YAML file containing a description of a test."
+    )
+    parser.add_argument(
+        "output",
+        help="An html file that will have a formatted preview of the quiz.",
     )
     parser.add_argument(
         "-p",

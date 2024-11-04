@@ -47,12 +47,16 @@ def cell_for_tag(nb, tag):
     return [
         cell
         for cell in nb.cells
-        if "metadata" in cell and "tags" in cell["metadata"] and tag in cell["metadata"]["tags"]
+        if "metadata" in cell
+        and "tags" in cell["metadata"]
+        and tag in cell["metadata"]["tags"]
     ][0]
 
 
 def has_error(cell):
-    return cell["outputs"] and any(["ename" in output for output in cell["outputs"]])
+    return cell["outputs"] and any(
+        ["ename" in output for output in cell["outputs"]]
+    )
 
 
 def get_error(cell):
@@ -77,7 +81,11 @@ def main(args):
         raise ValueError("Student code exceeds the maximum.")
 
     # Load the notebook template.
-    template_file = files("nbquiz.resources").joinpath("test-notebook-template.ipynb").read_text()
+    template_file = (
+        files("nbquiz.resources")
+        .joinpath("test-notebook-template.ipynb")
+        .read_text()
+    )
     nb = nbformat.reads(template_file, as_version=nbformat.NO_CONVERT)
 
     student_cell = cell_for_tag(nb, "student")

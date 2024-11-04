@@ -8,3 +8,5 @@ RUN pip install .
 ENV PORT=32453
 ENV NBQUIZ_TESTBANKS=/testbank/testbank.zip
 CMD nbquiz server 
+
+# TODO: Look in to running as a non-root user
