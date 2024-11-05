@@ -95,7 +95,10 @@ class _QuestionValidator(type):
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
-        if cls.__name__ not in cls.abstract_bases:
+        if (
+            cls.__name__ not in cls.abstract_bases
+            and not cls.__name__.startswith("_")
+        ):
             # Only validate if this is not an ABC
             cls.validate()
 
@@ -171,12 +174,11 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
         Produce a unique, opaque identifier for this test question.
         """
         m = hashlib.sha1()
-        if (under := cls.__name__[1:].find("_")) == -1:
-            clsname = cls.__name__
-        else:
-            clsname = cls.__name__[1:under]
+        clsname = cls.__name__
+        if (under := cls.__name__[1:].find("_")) != -1:
+            clsname = cls.__name__[under + 1 :]
         prefix = clsname[0].lower() + "".join(
-            [ll.lower() for ll in clsname if ll.isupper() or ll.isdigit()]
+            [ll.lower() for ll in clsname[1:] if ll.isupper() or ll.isdigit()]
         )
         m.update(cls.__name__.encode("utf-8"))
         return f"@{prefix}-{m.hexdigest()[:4]}"
@@ -232,8 +234,14 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
             "cellid": cls.cellid(),
         }
         values.update(cls._params)
-        temp = _template_env.from_string(textwrap.dedent(cls.__doc__).strip())
-        values["question"] = temp.render(**values)
+        if cls.__doc__ is not None:
+            temp = _template_env.from_string(
+                textwrap.dedent(cls.__doc__).strip()
+            )
+            values["question"] = temp.render(**values)
+        else:
+            values["question"] = ""
+
         return values
 
     @classmethod
@@ -266,7 +274,6 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
         class_locals.update(params)
 
         newtype = type(classname, cls.__bases__, class_locals)
-        newtype.validate()
         return newtype
 
 
@@ -440,7 +447,9 @@ class CellQuestion(FunctionQuestion):
     def setUp(self):
         # Validate that the cell defines the required variables.
         argnames = [
-            arg for arg in self.resolve_annotations() if arg != "return"
+            arg.value() if isinstance(arg, Parameter) else arg
+            for arg in self.resolve_annotations()
+            if arg != "return"
         ]
         for name in argnames:
             assert (
