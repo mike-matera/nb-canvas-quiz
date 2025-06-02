@@ -6,7 +6,6 @@ authors = [
 version = "0.3.0"
 requires-python = ">= 3.10"
 dependencies = [
-    "nbtest@git+https://github.com/mike-matera/nbtest.git#egg=main",
     "jinja2", 
     "jupyterlab",
     "ipywidgets",
