@@ -1162,6 +1162,7 @@ dependencies = [
     { name = "jupyterlab" },
     { name = "minify-html" },
     { name = "myst-parser" },
+    { name = "nbtest" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "yamale" },
@@ -1178,9 +1179,27 @@ requires-dist = [
     { name = "jupyterlab" },
     { name = "minify-html" },
     { name = "myst-parser" },
+    { name = "nbtest", directory = "../nbtest" },
     { name = "pyyaml" },
     { name = "requests" },
     { name = "yamale" },
+]
+
+[[package]]
+name = "nbtest"
+version = "1.0.0"
+source = { directory = "../nbtest" }
+dependencies = [
+    { name = "ipywidgets" },
+    { name = "jinja2" },
+    { name = "jupyterlab" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ipywidgets" },
+    { name = "jinja2" },
+    { name = "jupyterlab" },
 ]
 
 [[package]]
