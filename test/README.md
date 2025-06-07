@@ -1,7 +1,7 @@
 # Testing the Checker Server 
 
-This directory has configuration to launch z2jh on Minikube. The configuration in `z2jh-values.yaml` is
-configured to use the example test banks on GitHub. 
+This directory has configuration to launch z2jh on Minikube. The configuration
+in `z2jh-values.yaml` is configured to use the example test banks on GitHub. 
 
 1. Start `minikube`:
     ```
@@ -22,15 +22,15 @@ configured to use the example test banks on GitHub.
 
 ## Setup in Jupyter 
 
-The Helm chart uses a default Jupyter image that doesn't have `nbquiz` installed. Before
-you can run a test notebook use the shell to execute: 
+The Helm chart uses a default Jupyter image that doesn't have `nbquiz`
+installed. Before you can run a test notebook use the shell to execute: 
 
 ```
 pip install git+https://github.com/mike-matera/nbquiz.git
 ```
 
-Once `nbquiz` is installed you can drag-and-drop an exam notebook into Jupyter and execute
-it. 
+Once `nbquiz` is installed you can drag-and-drop an exam notebook into Jupyter
+and execute it. 
 
 ## Use Local Testbanks 
 
@@ -75,8 +75,8 @@ Kubernetes using a Secret resource.
 
 ## Setup in Jupyter 
 
-The Helm chart uses a default Jupyter image that doesn't have `nbquiz` installed. Before
-you can run a test notebook use the shell to execute: 
+The Helm chart uses a default Jupyter image that doesn't have `nbquiz`
+installed. Before you can run a test notebook use the shell to execute: 
 
 ```
 pip install git+https://github.com/mike-matera/nbquiz.git

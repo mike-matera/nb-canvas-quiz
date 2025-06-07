@@ -11,10 +11,16 @@ hub:
       authenticator_class: dummy
 
 singleuser:
+  image: 
+    name: "ghcr.io/mike-matera/python-for-everyone"
+    tag: "main"
+    pullPolicy: Always
   extraContainers:
     - "name": "nbquiz-server"
-      "image": "ghcr.io/mike-matera/nbquiz:main"
+      "image": "ghcr.io/mike-matera/python-for-everyone:main"
       "imagePullPolicy": "Always"
+      "command": ["/home/student/.venv/bin/nbquiz"]
+      "args": ["server"]
       "env":
         - "name": "NBQUIZ_TESTBANKS"
           "value": "https://github.com/mike-matera/nbquiz/raw/refs/heads/main/examples/testbanks/testbank.zip"
