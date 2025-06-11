@@ -1094,6 +1094,57 @@ wheels = [
 ]
 
 [[package]]
+name = "nb-canbas-quiz"
+version = "0.4.0"
+source = { editable = "." }
+dependencies = [
+    { name = "cssutils" },
+    { name = "docutils" },
+    { name = "grpcio" },
+    { name = "grpcio-tools" },
+    { name = "ipywidgets" },
+    { name = "jinja2" },
+    { name = "jupyterlab" },
+    { name = "minify-html" },
+    { name = "myst-parser" },
+    { name = "nb-unittest" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "yamale" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cssutils" },
+    { name = "docutils" },
+    { name = "grpcio" },
+    { name = "grpcio-tools" },
+    { name = "ipywidgets" },
+    { name = "jinja2" },
+    { name = "jupyterlab" },
+    { name = "minify-html" },
+    { name = "myst-parser" },
+    { name = "nb-unittest" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "yamale" },
+]
+
+[[package]]
+name = "nb-unittest"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ipywidgets" },
+    { name = "jinja2" },
+    { name = "jupyterlab" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/be/37/9a14c8e0ac0a83605366518330967e5655a5fef7c14f49857c3c04a2cb09/nb_unittest-1.0.2.tar.gz", hash = "sha256:79c628b731a481630cdaf4c424f22795d19ed2f2c60e71fec825da629c58a2c5", size = 13499 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/39/754ae7b788c88ec43acd3cf77c5f4f3f228b5b7f3d9622d5b88fc8f22737/nb_unittest-1.0.2-py3-none-any.whl", hash = "sha256:09e86e01a43b067369823af4327e1ed82b0e000ce8731fc3848652152550f679", size = 13921 },
+]
+
+[[package]]
 name = "nbclient"
 version = "0.10.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1146,60 +1197,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6d/fd/91545e604bc3dad7dca9ed03284086039b294c6b3d75c0d2fa45f9e9caf3/nbformat-5.10.4.tar.gz", hash = "sha256:322168b14f937a5d11362988ecac2a4952d3d8e3a2cbeb2319584631226d5b3a", size = 142749 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl", hash = "sha256:3b48d6c8fbca4b299bf3982ea7db1af21580e4fec269ad087b9e81588891200b", size = 78454 },
-]
-
-[[package]]
-name = "nbquiz"
-version = "0.3.0"
-source = { editable = "." }
-dependencies = [
-    { name = "cssutils" },
-    { name = "docutils" },
-    { name = "grpcio" },
-    { name = "grpcio-tools" },
-    { name = "ipywidgets" },
-    { name = "jinja2" },
-    { name = "jupyterlab" },
-    { name = "minify-html" },
-    { name = "myst-parser" },
-    { name = "nbtest" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "yamale" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cssutils" },
-    { name = "docutils" },
-    { name = "grpcio" },
-    { name = "grpcio-tools" },
-    { name = "ipywidgets" },
-    { name = "jinja2" },
-    { name = "jupyterlab" },
-    { name = "minify-html" },
-    { name = "myst-parser" },
-    { name = "nbtest", directory = "../nbtest" },
-    { name = "pyyaml" },
-    { name = "requests" },
-    { name = "yamale" },
-]
-
-[[package]]
-name = "nbtest"
-version = "1.0.0"
-source = { directory = "../nbtest" }
-dependencies = [
-    { name = "ipywidgets" },
-    { name = "jinja2" },
-    { name = "jupyterlab" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ipywidgets" },
-    { name = "jinja2" },
-    { name = "jupyterlab" },
 ]
 
 [[package]]

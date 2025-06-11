@@ -245,7 +245,7 @@ class CanvasExport(Quiz):
         nb = nbformat.v4.new_notebook()
         nb.cells.append(
             nbformat.v4.new_code_cell(
-                """%load_ext nbtest""",
+                """%load_ext nb_unittest""",
                 metadata={"editable": False, "deletable": False},
             ),
         )
@@ -260,8 +260,8 @@ class CanvasExport(Quiz):
         for i, question in enumerate(self._quiz.questions):
             nb.cells.append(
                 nbformat.v4.new_markdown_cell(
-                    f"""# Question {i+1}
-Please answer question #{i+1} in the next cell.
+                    f"""# Question {i + 1}
+Please answer question #{i + 1} in the next cell.
 """,
                     metadata={"editable": False, "deletable": False},
                 )
@@ -269,7 +269,7 @@ Please answer question #{i+1} in the next cell.
             nb.cells.append(
                 nbformat.v4.new_code_cell(
                     f"""\"""
-@answer{i+1}
+@answer{i + 1}
 Add the checker tag here: 
 \"""
 """,
@@ -278,9 +278,9 @@ Add the checker tag here:
             )
             nb.cells.append(
                 nbformat.v4.new_code_cell(
-                    f"""%%testing @answer{i+1} 
+                    f"""%%testing @answer{i + 1} 
 import nbquiz.runtime.client
-nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i+1})]
+nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i + 1})]
 """,
                     metadata={"editable": False, "deletable": False},
                 )

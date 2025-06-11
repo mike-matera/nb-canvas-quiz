@@ -21,6 +21,7 @@ from collections.abc import Iterable
 from typing import Callable, get_type_hints
 from unittest import TestCase
 
+import nb_unittest
 from jinja2 import (
     Environment,
     PackageLoader,
@@ -28,8 +29,6 @@ from jinja2 import (
     UndefinedError,
     select_autoescape,
 )
-
-import nbtest
 
 _template_env = Environment(
     loader=PackageLoader("nbquiz", package_path="resources"),
@@ -127,14 +126,14 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
         super().__init__(tests)
         self.solution_cell = None
 
-        doctags = nbtest.tags()
+        doctags = nb_unittest.tags()
         celltag = self.celltag()
         nametag = self.cellid()
 
         if celltag in doctags:
-            self.solution_cell = nbtest.get(celltag)
+            self.solution_cell = nb_unittest.get(celltag)
         elif nametag in doctags:
-            self.solution_cell = nbtest.get(nametag)
+            self.solution_cell = nb_unittest.get(nametag)
         else:
             self.fail(
                 f"I can't find a solution with the tag {self.celltag()}."
@@ -150,9 +149,9 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
             (t.__class__ for t in ast.walk(self.solution_cell.tree))
         )
 
-        assert all(
-            {token in alltokens for token in self.tokens_required}
-        ), """The solution is missing required syntax."""
+        assert all({token in alltokens for token in self.tokens_required}), (
+            """The solution is missing required syntax."""
+        )
 
         if self.tokens_forbidden:
             assert not any(
@@ -190,12 +189,12 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
         Failures in validate() will be reported in the cell where a test class is
         defined.
         """
-        assert isinstance(
-            cls.tokens_required, Iterable
-        ), f"""`tokens_required` must be iterable, not a {cls.tokens_required.__class__}"""
-        assert isinstance(
-            cls.tokens_forbidden, Iterable
-        ), f"""`tokens_forbidden` must be iterable, not a {cls.tokens_forbidden.__class__}"""
+        assert isinstance(cls.tokens_required, Iterable), (
+            f"""`tokens_required` must be iterable, not a {cls.tokens_required.__class__}"""
+        )
+        assert isinstance(cls.tokens_forbidden, Iterable), (
+            f"""`tokens_forbidden` must be iterable, not a {cls.tokens_forbidden.__class__}"""
+        )
 
         # Generate the _params dictionary
         cls._params = {}
@@ -316,25 +315,25 @@ class FunctionQuestion(TestQuestion):
 
     def __init__(self, tests=()):
         super().__init__(tests)
-        self.solution_cell: nbtest.tagcache.TagCacheEntry
+        self.solution_cell: nb_unittest.tagcache.TagCacheEntry
 
     def setUp(self):
         super().setUp()
 
-        assert (
-            self.name in self.solution_cell.ns
-        ), f"""{self.name} is not defined."""
+        assert self.name in self.solution_cell.ns, (
+            f"""{self.name} is not defined."""
+        )
         self.solution = self.solution_cell.ns[self.name]
 
-        assert isinstance(
-            self.solution, Callable
-        ), f"""{self.name} is not a function (did you redefine it?)."""
+        assert isinstance(self.solution, Callable), (
+            f"""{self.name} is not a function (did you redefine it?)."""
+        )
 
         if not self.name.startswith("_"):
             # Subclasses can disable arg name checks of wrappers.
-            assert (
-                self.name in self.solution_cell.functions
-            ), f"""{self.name} is not a function."""
+            assert self.name in self.solution_cell.functions, (
+                f"""{self.name} is not a function."""
+            )
             assert (
                 self.solution_cell.functions[self.name].docstring is not None
             ), f"""The function {self.name} has no docstring."""
@@ -344,33 +343,34 @@ class FunctionQuestion(TestQuestion):
                 for arg in self.resolve_annotations()
                 if arg != "return"
             ]
-            assert (
-                len(argnames)
-                == len(self.solution_cell.functions[self.name].arguments)
-            ), f"""The function {self.name} has the wrong number of arguments."""
+            assert len(argnames) == len(
+                self.solution_cell.functions[self.name].arguments
+            ), (
+                f"""The function {self.name} has the wrong number of arguments."""
+            )
             for i, arg in enumerate(argnames):
                 funcarg = self.solution_cell.functions[self.name].arguments[i]
                 if os.environ.get("NBQUIZ_STRICT") is not None or (
                     not funcarg.startswith("_") and not funcarg.endswith("_")
                 ):
-                    assert (
-                        arg == funcarg
-                    ), f"""The argument "{funcarg}" is misspelled or in the wrong place."""
+                    assert arg == funcarg, (
+                        f"""The argument "{funcarg}" is misspelled or in the wrong place."""
+                    )
 
         inner_function = self.solution
 
         def _wrapper(*args, **kwargs):
             rval = inner_function(*args, **kwargs)
             if self.annotations["return"] is None:
-                assert (
-                    rval is None
-                ), f"""The function {self.name} returned {rval} instead of None"""
+                assert rval is None, (
+                    f"""The function {self.name} returned {rval} instead of None"""
+                )
             elif self.annotations["return"] is typing.Any:
                 pass
             else:
-                assert isinstance(
-                    rval, self.annotations["return"]
-                ), f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
+                assert isinstance(rval, self.annotations["return"]), (
+                    f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
+                )
 
             return rval
 
@@ -389,18 +389,18 @@ class FunctionQuestion(TestQuestion):
             if (m := re.match(r"^\s*{\s*(\S+)\s*}\s*$", an)) is not None:
                 pname = m.group(1)
                 pvalue = cls._params[pname]
-                assert isinstance(
-                    pvalue.value(), str
-                ), f"""Parameters that name function arguments must be strings but "{pname}" is an {pvalue.value().__class__}"""
-                assert (
-                    pname in cls._params
-                ), f"""The annotation dictionary references "{pname}" but the class does not have a matching variable."""
+                assert isinstance(pvalue.value(), str), (
+                    f"""Parameters that name function arguments must be strings but "{pname}" is an {pvalue.value().__class__}"""
+                )
+                assert pname in cls._params, (
+                    f"""The annotation dictionary references "{pname}" but the class does not have a matching variable."""
+                )
                 formatted[pvalue] = typ
             else:
                 # Check for a missed template value.
-                assert (
-                    an not in cls._params
-                ), f"""Annotation argument "{an}" matches a class attribute {an} == "{getattr(cls,an)}". Did you mean "{{{an}}}"?"""
+                assert an not in cls._params, (
+                    f"""Annotation argument "{an}" matches a class attribute {an} == "{getattr(cls, an)}". Did you mean "{{{an}}}"?"""
+                )
                 formatted[an] = typ
 
         return formatted
@@ -414,18 +414,18 @@ class FunctionQuestion(TestQuestion):
     @classmethod
     def validate(cls):
         super().validate()
-        assert (
-            cls.name is not None
-        ), """The `name` attribute is required in a FunctionQuestion."""
-        assert hasattr(
-            cls, "annotations"
-        ), """The attribute `annotations` is required in a FunctionQuestion"""
-        assert isinstance(
-            cls.annotations, dict
-        ), """The `annotations` attribute must be a dictionary"""
-        assert (
-            "return" in cls.annotations
-        ), """The `annotations` dictionary must contain the "return" key."""
+        assert cls.name is not None, (
+            """The `name` attribute is required in a FunctionQuestion."""
+        )
+        assert hasattr(cls, "annotations"), (
+            """The attribute `annotations` is required in a FunctionQuestion"""
+        )
+        assert isinstance(cls.annotations, dict), (
+            """The `annotations` attribute must be a dictionary"""
+        )
+        assert "return" in cls.annotations, (
+            """The `annotations` dictionary must contain the "return" key."""
+        )
         cls.resolve_annotations()
 
     @classmethod
@@ -452,9 +452,9 @@ class CellQuestion(FunctionQuestion):
             if arg != "return"
         ]
         for name in argnames:
-            assert (
-                name in self.solution_cell.assignments
-            ), f"""The variable "{name}" was never assigned."""
+            assert name in self.solution_cell.assignments, (
+                f"""The variable "{name}" was never assigned."""
+            )
 
         # Create a wrapper function in the user's namespace.
         def _cell_wrapper(*args, **kwargs):
@@ -497,27 +497,27 @@ class ClassQuestion(TestQuestion):
         super().setUp()
 
         # Validate that the cell defines the required class.
-        assert (
-            self.name in self.solution_cell.ns
-        ), f"""{self.name} is not defined."""
+        assert self.name in self.solution_cell.ns, (
+            f"""{self.name} is not defined."""
+        )
         self.solution = self.solution_cell.ns[self.name]
 
-        assert isinstance(
-            self.solution, type
-        ), f"""{self.name} is not a class (did you redefine it?)."""
+        assert isinstance(self.solution, type), (
+            f"""{self.name} is not a class (did you redefine it?)."""
+        )
 
         if not self.name.startswith("_"):
             # Ignore my internal classes.
-            assert (
-                self.name in self.solution_cell.classes
-            ), f"""{self.name} is not a class."""
+            assert self.name in self.solution_cell.classes, (
+                f"""{self.name} is not a class."""
+            )
             assert (
                 self.solution_cell.classes[self.name].docstring is not None
             ), f"""The class {self.name} has no docstring."""
             # Ignore my internal classes.
-            assert (
-                self.name in self.solution_cell.classes
-            ), f"""{self.name} is not a class."""
+            assert self.name in self.solution_cell.classes, (
+                f"""{self.name} is not a class."""
+            )
             assert (
                 self.solution_cell.classes[self.name].docstring is not None
             ), f"""The class {self.name} has no docstring."""

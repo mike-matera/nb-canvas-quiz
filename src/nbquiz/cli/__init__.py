@@ -16,7 +16,7 @@ subcommands = {
 
 parser = argparse.ArgumentParser(
     prog="nbquiz",
-    description="Do various things with nbtest.",
+    description="Do various things with nb_unittest.",
     epilog="See help on subcommands.",
 )
 
