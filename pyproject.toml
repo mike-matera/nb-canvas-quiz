@@ -1,5 +1,5 @@
 [project]
-name = "nb-canbas-quiz"
+name = "nb-canvas-quiz"
 authors = [
     {name = "Mike Matera", email = "michael.matera@cabrillo.edu"},
 ]
