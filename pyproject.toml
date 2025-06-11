@@ -3,8 +3,15 @@ name = "nb-canvas-quiz"
 authors = [
     {name = "Mike Matera", email = "michael.matera@cabrillo.edu"},
 ]
+description="quizzes for my CIS-15 class at Cabrillo College"
 version = "0.4.0"
 requires-python = ">= 3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
 dependencies = [
     "jinja2",
     "jupyterlab",
@@ -20,6 +27,10 @@ dependencies = [
     "requests",
     "nb-unittest",
 ]
+
+[project.urls]
+Homepage = "https://github.com/mike-matera/nb-canvas-quiz"
+Issues = "https://github.com/mike-matera/nb-canvas-quiz/issues"
 
 [tool.setuptools.package-data]
 "nbquiz.resources" = ["*"]
