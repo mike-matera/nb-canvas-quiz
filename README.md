@@ -104,29 +104,29 @@ Here's how to use the examples. To generate an HTML preview of the example asses
 run:
 
 ```console 
-$ nbquiz preview examples/assessment.yaml preview.html 
+$ uv run nbquiz preview examples/assessment.yaml preview.html 
 ```
 
 To generate an export package for Canvas run:
 
 ```
-$ nbquiz export ../testbanks/midterm_sp24.yaml canvas-quiz.zip
+$ uv run nbquiz export ../testbanks/midterm_sp24.yaml canvas-quiz.zip
 ```
 
 To run the grader server. Set `NBQUIZ_TESTBANKS` to a directory or directories 
 with test bank notebooks to load: 
 
 ```
-$ NBQUIZ_TESTBANKS=./examples nbquiz server 
+$ NBQUIZ_TESTBANKS=$(pwd)/examples uv run nbquiz server 
 ```
 
 Now see how a test is run:
 
 ```console
-$ NBQUIZ_TESTBANKS=$(pwd)/examples nbquiz send << EOF
-"@SimpleArgReverse"
-def arg_reverser(arg1, arg2, arg3):
-  return arg3, arg2, arg1 
+$ NBQUIZ_TESTBANKS=$(pwd)/examples uv run nbquiz send << EOF
+"""@TriangleMaxArea1"""
+# No docstring
+def triangle_limit(base, height):
+    return (base * height) / 2 >= 10
 EOF
 ```
-
