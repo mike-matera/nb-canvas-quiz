@@ -175,7 +175,7 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
         m = hashlib.sha1()
         clsname = cls.__name__
         if (under := cls.__name__[1:].find("_")) != -1:
-            clsname = cls.__name__[under + 1 :]
+            clsname = cls.__name__[0 : under + 1]
         prefix = clsname[0].lower() + "".join(
             [ll.lower() for ll in clsname[1:] if ll.isupper() or ll.isdigit()]
         )

@@ -1,8 +1,11 @@
 #
-# YAML that describes a Canvas export. 
+# YAML that describes a Canvas assessment. 
 #
 
 title: CIS-15 Final Spring 2024
+
+testbanks: 
+  - testbank.ipynb
 
 description: | 
     Welcome to the CIS-15 midterm. Please read all of the instructions. 

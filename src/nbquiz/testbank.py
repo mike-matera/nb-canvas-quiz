@@ -42,6 +42,10 @@ class _TestBank:
                     raise ValueError("The test bank path doesn't exist:", p)
                 if p.suffix == ".zip":
                     self._load_zip(p)
+                elif p.suffix == ".ipynb":
+                    logging.info(f"Loading test bank file: {p}")
+                    with open(p) as fh:
+                        self._loads(fh.read())
                 else:
                     for nb in p.glob("*.ipynb"):
                         logging.info(f"Loading test bank file: {nb}")
