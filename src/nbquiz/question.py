@@ -173,11 +173,12 @@ class TestQuestion(TestCase, metaclass=_QuestionValidator):
         Produce a unique, opaque identifier for this test question.
         """
         m = hashlib.sha1()
-        clsname = cls.__name__
-        if (under := cls.__name__[1:].find("_")) != -1:
-            clsname = cls.__name__[0 : under + 1]
-        prefix = clsname[0].lower() + "".join(
-            [ll.lower() for ll in clsname[1:] if ll.isupper() or ll.isdigit()]
+        prefix = cls.__name__[0].lower() + "".join(
+            [
+                ll.lower()
+                for ll in cls.__name__[1:]
+                if ll.isupper() or ll.isdigit() or ll == "_"
+            ]
         )
         m.update(cls.__name__.encode("utf-8"))
         return f"@{prefix}-{m.hexdigest()[:4]}"

@@ -37,7 +37,7 @@ class T1(TestCase):
         class __MyTestFoo(TestQuestion):
             pass
 
-        self.assertEqual("@_mtf-", __MyTestFoo.celltag()[0:6])
+        self.assertEqual("@__mtf-", __MyTestFoo.celltag()[0:7])
 
         class _(TestQuestion):
             pass
@@ -47,7 +47,7 @@ class T1(TestCase):
         class __(TestQuestion):
             pass
 
-        self.assertEqual("@_-", __.celltag()[0:3])
+        self.assertEqual("@__-", __.celltag()[0:4])
 
         class mytest(TestQuestion):
             pass
