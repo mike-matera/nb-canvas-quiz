@@ -4,7 +4,7 @@ authors = [
     {name = "Mike Matera", email = "michael.matera@cabrillo.edu"},
 ]
 description="quizzes for my CIS-15 class at Cabrillo College"
-version = "0.5.0"
+version = "0.5.1"
 requires-python = ">= 3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
