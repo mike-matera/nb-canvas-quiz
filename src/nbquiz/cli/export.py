@@ -14,9 +14,6 @@ def add_args(parser):
     parser.add_argument(
         "testyaml", help="A YAML file containing a description of a test."
     )
-    parser.add_argument(
-        "output", help="A ZIP file that will have the Canvas export package."
-    )
 
 
 def main(args):
@@ -24,5 +21,4 @@ def main(args):
     logging.info(f"Loading test file: {args.testyaml}")
     c = CanvasExport()
     c.load_file(args.testyaml)
-    logging.info(f"Writing {args.output}")
-    c.write(args.output)
+    c.write()

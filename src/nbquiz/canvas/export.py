@@ -239,8 +239,11 @@ class CanvasExport(Quiz):
             )
         )
 
-    def write(self, filename):
+    def write(self):
         """Write the assessment export ZIP file to disk."""
+
+        nbfilename = f"{self._quiz_meta.title}.ipynb"
+        zipfilename = f"{self._quiz_meta.title}.zip"
 
         nb = nbformat.v4.new_notebook()
         nb.cells.append(
@@ -286,10 +289,13 @@ nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i + 1})]
                 )
             )
 
+        # Write a copy of the notebook
+        nbformat.write(nb, nbfilename)
+
         def file_link(filename):
             return f"""<a class="instructure_file_link inline_disabled" title="{filename}" href="$IMS-CC-FILEBASE$/Uploaded%20Media/{filename}?canvas_=1&amp;canvas_qs_wrap=1" target="_blank" data-canvas-previewable="false">{filename}</a>"""
 
-        with zipfile.ZipFile(filename, "w") as zf:
+        with zipfile.ZipFile(zipfilename, "w") as zf:
             # Add a section to the description with a list of files:
             self._quiz_meta.description += """<p>Attached files:<ul>"""
 
@@ -307,7 +313,6 @@ nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i + 1})]
                 )
 
             # Add the test file to the manifest.
-            nbfilename = f"{self._quiz_meta.title}.ipynb"
             self._manifest.resources.append(FileResource(filename=nbfilename))
             zf.writestr(
                 f"web_resources/Uploaded Media/{nbfilename}",
