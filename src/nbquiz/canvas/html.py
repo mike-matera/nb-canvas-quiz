@@ -12,6 +12,8 @@ TODO: Docutils inserts <aside> tags when there are errors. Mute them.
 from importlib.resources import files
 
 import cssutils
+import docutils
+import docutils.utils
 import minify_html
 from docutils.core import publish_string
 from docutils.writers import _html_base
@@ -125,6 +127,7 @@ def md_to_canvas_html(source):
             "myst_enable_extensions": MYST_EXTENSIONS,
             "embed_stylesheet": False,
             "stylesheet_dirs": [],
+            "report_level": docutils.utils.Reporter.SEVERE_LEVEL,
         },
         parser=Parser(),
     )
