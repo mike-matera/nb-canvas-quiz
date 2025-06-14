@@ -15,6 +15,11 @@ singleuser:
     name: "ghcr.io/mike-matera/python-for-everyone"
     tag: "main"
     pullPolicy: Always
+  storage:
+    extraVolumes:
+      - "name": "testbanks"
+        "hostPath": 
+          "path": "/testbanks"
   extraContainers:
     - "name": "nbquiz-server"
       "image": "ghcr.io/mike-matera/python-for-everyone:main"
@@ -23,4 +28,7 @@ singleuser:
       "args": ["server"]
       "env":
         - "name": "NBQUIZ_TESTBANKS"
-          "value": "https://github.com/mike-matera/nbquiz/raw/refs/heads/main/examples/testbanks/testbank.zip"
+          "value": "/testbanks"
+      "volumeMounts":
+        - "name": "testbanks"
+          "mountPath": "/testbanks"

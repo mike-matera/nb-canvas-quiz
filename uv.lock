@@ -1095,7 +1095,7 @@ wheels = [
 
 [[package]]
 name = "nb-canvas-quiz"
-version = "0.5.0"
+version = "0.5.1"
 source = { editable = "." }
 dependencies = [
     { name = "cssutils" },

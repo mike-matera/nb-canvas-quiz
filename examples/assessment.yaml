@@ -2,16 +2,16 @@
 # YAML that describes a Canvas assessment. 
 #
 
-title: CIS-15 Final Spring 2024
+title: Example Final Spring 2024
 
 testbanks: 
   - testbank.ipynb
 
 description: | 
-    Welcome to the CIS-15 midterm. Please read all of the instructions. 
+    Welcome to the final. Please read all of the instructions. 
     You will be asked to write functions. There's a checker program that 
     you can use to make sure that your functions are correct. Instructions 
-    for the checker program are the same as the practice midterm. If you 
+    for the checker program are the same as the practice final. If you 
     haven't done the practice you should stop and do it first. See below 
     for a link to download the exam notebook.
 

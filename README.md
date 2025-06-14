@@ -110,7 +110,7 @@ $ uv run nbquiz preview examples/assessment.yaml preview.html
 To generate an export package for Canvas run:
 
 ```
-$ uv run nbquiz export ../testbanks/midterm_sp24.yaml canvas-quiz.zip
+$ uv run nbquiz export examples/assessment.yaml canvas-quiz-export.zip
 ```
 
 To run the grader server. Set `NBQUIZ_TESTBANKS` to a directory or directories 
