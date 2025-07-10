@@ -362,13 +362,10 @@ class FunctionQuestion(TestQuestion):
 
         def _wrapper(*args, **kwargs):
             rval = inner_function(*args, **kwargs)
-            if self.annotations["return"] is None:
-                assert rval is None, (
-                    f"""The function {self.name} returned {rval} instead of None"""
-                )
-            elif self.annotations["return"] is typing.Any:
-                pass
-            else:
+            if (
+                self.annotations["return"] is not None
+                and self.annotations["return"] is not typing.Any
+            ):
                 assert isinstance(rval, self.annotations["return"]), (
                     f"""The function {self.name} returned {rval} not a {self.annotations["return"]}"""
                 )
@@ -414,11 +411,13 @@ class FunctionQuestion(TestQuestion):
 
     @classmethod
     def validate(cls):
-        super().validate()
         assert cls.name is not None, (
             """The `name` attribute is required in a FunctionQuestion."""
         )
         assert hasattr(cls, "annotations"), (
+            """The attribute `annotations` is required in a FunctionQuestion"""
+        )
+        assert cls.annotations is not None, (
             """The attribute `annotations` is required in a FunctionQuestion"""
         )
         assert isinstance(cls.annotations, dict), (
@@ -427,6 +426,7 @@ class FunctionQuestion(TestQuestion):
         assert "return" in cls.annotations, (
             """The `annotations` dictionary must contain the "return" key."""
         )
+        super().validate()
         cls.resolve_annotations()
 
     @classmethod
@@ -463,7 +463,15 @@ class CellQuestion(FunctionQuestion):
             updates.update(kwargs)
             result = self.solution_cell.run(updates)
             # Make sure this wrapper produces the same STDOUT that the cell would.
-            print(result.stdout)
+            if result.stdout:
+                print(result.stdout)
+            if (
+                self.return_type is not None
+                and self.return_type is not typing.Any
+            ):
+                assert isinstance(result.result, self.return_type), (
+                    f"""Your cell should have resulted in a value of type {self.return_type} instead of {result.result.__class__}"""
+                )
             return result.result
 
         self.solution_cell.ns["_cell_wrapper"] = _cell_wrapper
@@ -472,6 +480,9 @@ class CellQuestion(FunctionQuestion):
     @classmethod
     def validate(cls):
         cls.name = "_cell_wrapper"
+        # Sabotage return-type checks in FunctionQuestion...
+        cls.return_type = cls.annotations["return"]
+        cls.annotations["return"] = None
         return super().validate()
 
     @classmethod
