@@ -3,12 +3,14 @@
 Function definition: 
 
 - Name: {{ name | literal }}
-- Arguments: 
+{% if annotations | length > 1 %}
+- Arguments:
 {% for key in annotations %}
 {% if key != "return" %}
   - {{ key | literal }} (*`{{ annotations[key].__name__ }}`*)
 {% endif %}
 {% endfor %}
+{% endif %}
 {% if annotations["return"] %}
 - Returns:  *`{{ annotations["return"].__name__ }}`*
 {% endif %}
