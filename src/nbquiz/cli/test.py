@@ -102,7 +102,7 @@ def main(args):
             nbformat.write(nb, fh)
 
         result = subprocess.run(
-            """jupyter execute --inplace --allow-errors --timeout 2 --startup_timeout 4 output.ipynb""",
+            """jupyter execute --inplace --allow-errors --timeout 20 --startup_timeout 10 output.ipynb""",
             shell=True,
             capture_output=True,
             cwd=td,
