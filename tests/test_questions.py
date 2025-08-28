@@ -205,12 +205,12 @@ class T2(TestCase):
             class te(FunctionQuestion):
                 pass
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(AssertionError):
 
             class te(FunctionQuestion):
                 name = "foo"
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
 
             class te(FunctionQuestion):
                 name = "foo"
