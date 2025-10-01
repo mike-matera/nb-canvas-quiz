@@ -283,6 +283,7 @@ Add the checker tag here:
                 nbformat.v4.new_code_cell(
                     f"""%%testing @answer{i + 1} 
 import nbquiz.runtime.client
+async def robot(): ...
 nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i + 1})]
 """,
                     metadata={"editable": False, "deletable": False},
