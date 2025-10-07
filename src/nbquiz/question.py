@@ -446,6 +446,10 @@ class CellQuestion(FunctionQuestion):
     abstract_bases = FunctionQuestion.abstract_bases + ["CellQuestion"]
 
     def setUp(self):
+        # Sabotage return-type checks in FunctionQuestion...
+        self.return_type = self.annotations["return"]
+        self.annotations["return"] = None
+
         # Validate that the cell defines the required variables.
         argnames = [
             arg.value() if isinstance(arg, Parameter) else arg
@@ -480,9 +484,6 @@ class CellQuestion(FunctionQuestion):
     @classmethod
     def validate(cls):
         cls.name = "_cell_wrapper"
-        # Sabotage return-type checks in FunctionQuestion...
-        cls.return_type = cls.annotations["return"]
-        cls.annotations["return"] = None
         return super().validate()
 
     @classmethod
