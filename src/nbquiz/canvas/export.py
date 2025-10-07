@@ -260,35 +260,48 @@ class CanvasExport(Quiz):
                 metadata={"editable": False, "deletable": False},
             )
         )
-        for i, question in enumerate(self._quiz.questions):
-            nb.cells.append(
-                nbformat.v4.new_markdown_cell(
-                    f"""# Question {i + 1}
+        i = 0
+        for question in self._quiz.questions:
+            if isinstance(question, Section):
+                pick = question.pick
+            else:
+                pick = 1
+            for j in range(pick):
+                nb.cells.append(
+                    nbformat.v4.new_markdown_cell(
+                        f"""# Question {i + 1}
 Please answer question #{i + 1} in the next cell.
 """,
-                    metadata={"editable": False, "deletable": False},
+                        metadata={"editable": False, "deletable": False},
+                    )
                 )
-            )
-            nb.cells.append(
-                nbformat.v4.new_code_cell(
-                    f"""\"""
+                nb.cells.append(
+                    nbformat.v4.new_code_cell(
+                        f"""\"""
 @answer{i + 1}
 Add the checker tag here: 
 \"""
 """,
-                    metadata={"editable": True, "deletable": False},
+                        metadata={"editable": True, "deletable": False},
+                    )
                 )
-            )
-            nb.cells.append(
-                nbformat.v4.new_code_cell(
-                    f"""%%testing @answer{i + 1} 
+                nb.cells.append(
+                    nbformat.v4.new_code_cell(
+                        """# Test your work in this cell""",
+                        metadata={"editable": True, "deletable": False},
+                    )
+                )
+                nb.cells.append(
+                    nbformat.v4.new_code_cell(
+                        f"""%%testing @answer{i + 1} 
 import nbquiz.runtime.client
 async def robot(): ...
 nbtest_cases = [nbquiz.runtime.client.proxy_test(answer{i + 1})]
-""",
-                    metadata={"editable": False, "deletable": False},
+    """,
+                        metadata={"editable": False, "deletable": False},
+                    )
                 )
-            )
+                i += 1
 
         # Write a copy of the notebook
         nbformat.write(nb, nbfilename)
