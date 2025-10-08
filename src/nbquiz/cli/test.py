@@ -126,7 +126,7 @@ def main(args):
             # Error is in the student code cell. (Normal error.)
             rval = 10
             ename, evalue = get_error(student_cell)
-            print(f"""{ename}: {evalue}""")
+            print("""Executing your solution caused an error.""")
 
         elif has_error(testbank_cell):
             # The error is in the testbank. This errors should be logged
